@@ -15,8 +15,24 @@ export const useAuthStore = defineStore('auth', () => {
       const { data: { user: currentUser } } = await supabase.auth.getUser()
       user.value = currentUser
 
-      supabase.auth.onAuthStateChange((_event, session) => {
+      supabase.auth.onAuthStateChange(async (event, session) => {
         user.value = session?.user || null
+        
+        // Handle logout by cleaning up presence
+        if (event === 'SIGNED_OUT') {
+          const { usePresenceStore } = await import('./presence')
+          const { useBoardStore } = await import('./board')
+          const presenceStore = usePresenceStore()
+          const boardStore = useBoardStore()
+          
+          // Remove user presence from database
+          if (boardStore.boardId) {
+            await presenceStore.removeUserPresence(boardStore.boardId)
+          }
+          
+          // Stop presence tracking
+          presenceStore.stopPresenceTracking()
+        }
       })
     } catch (error) {
       console.error('Auth initialization error:', error)
@@ -50,6 +66,20 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const signOut = async () => {
+    // Stop presence tracking and remove presence record before signing out
+    const { usePresenceStore } = await import('./presence')
+    const { useBoardStore } = await import('./board')
+    const presenceStore = usePresenceStore()
+    const boardStore = useBoardStore()
+    
+    // Remove user presence from database
+    if (boardStore.boardId) {
+      await presenceStore.removeUserPresence(boardStore.boardId)
+    }
+    
+    // Stop presence tracking
+    presenceStore.stopPresenceTracking()
+    
     const { error } = await supabase.auth.signOut()
     if (error) throw error
     user.value = null

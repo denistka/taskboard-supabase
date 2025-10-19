@@ -109,10 +109,15 @@ export const usePresenceStore = defineStore('presence', () => {
     presenceInterval = setInterval(async () => {
       await updatePresence(boardId)
       await fetchActiveUsers(boardId)
-    }, 30000)
+    }, 10000) // Reduced to 10 seconds for more responsive updates
 
     presenceChannel = supabase
-      .channel('user-presence')
+      .channel(`user-presence-${boardId}`, {
+        config: {
+          broadcast: { self: false },
+          presence: { key: `user-${authStore.user?.id}` }
+        }
+      })
       .on(
         'postgres_changes',
         {
@@ -125,7 +130,14 @@ export const usePresenceStore = defineStore('presence', () => {
           fetchActiveUsers(boardId)
         }
       )
-      .subscribe()
+      .subscribe((status) => {
+        if (status === 'CHANNEL_ERROR') {
+          console.error('Error subscribing to presence channel')
+        } else if (status === 'TIMED_OUT') {
+          console.error('Presence channel subscription timed out')
+        }
+      })
+
   }
 
   const stopPresenceTracking = () => {
@@ -139,9 +151,33 @@ export const usePresenceStore = defineStore('presence', () => {
     }
   }
 
+  const removeUserPresence = async (boardId: string) => {
+    const authStore = useAuthStore()
+    if (!authStore.user) return
+
+    try {
+      const { error } = await supabase
+        .from('user_presence')
+        .delete()
+        .eq('user_id', authStore.user.id)
+        .eq('board_id', boardId)
+
+      if (error) {
+        console.error('Error removing user presence:', error)
+      }
+    } catch (error) {
+      console.error('Error removing user presence:', error)
+    }
+  }
+
   onUnmounted(() => {
     stopPresenceTracking()
   })
+
+  const forceRefreshPresence = async (boardId: string) => {
+    await fetchActiveUsers(boardId)
+  }
+
 
   return {
     activeUsers,
@@ -150,5 +186,7 @@ export const usePresenceStore = defineStore('presence', () => {
     startPresenceTracking,
     stopPresenceTracking,
     setEditingState,
+    removeUserPresence,
+    forceRefreshPresence,
   }
 })

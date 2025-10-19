@@ -31,7 +31,7 @@ const formatDate = (date: string) => {
     @click="emit('click')"
   >
     <div class="flex items-start justify-between mb-3">
-      <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 flex-1 pr-2">
+      <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 flex-1 pr-2 truncate" :title="task.title">
         {{ task.title }}
       </h3>
       <button
@@ -45,7 +45,7 @@ const formatDate = (date: string) => {
       </button>
     </div>
 
-    <p v-if="task.description" class="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-2">
+    <p v-if="task.description" class="text-sm text-gray-600 dark:text-gray-400 mb-4 truncate" :title="task.description">
       {{ task.description }}
     </p>
 
@@ -62,11 +62,10 @@ const formatDate = (date: string) => {
 </template>
 
 <style scoped>
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+.truncate {
+  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 </style>
 

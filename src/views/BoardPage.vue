@@ -86,6 +86,7 @@ const handleSignOut = async () => {
   }
 }
 
+
 onMounted(() => {
   boardStore.initializeBoard()
 })
