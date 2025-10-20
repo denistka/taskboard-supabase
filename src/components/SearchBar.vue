@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import type { Task } from '@/types'
+import { useTaskStatus } from '@/composables/useTaskStatus'
 
 interface Props {
   tasks: Task[]
@@ -8,6 +9,7 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+const { getStatusTextColor, getStatusIcon } = useTaskStatus()
 
 const searchQuery = ref('')
 const isOpen = ref(false)
@@ -67,24 +69,6 @@ watch(searchQuery, () => {
   isOpen.value = searchQuery.value.trim().length > 0
   selectedIndex.value = -1
 })
-
-const getStatusColor = (status: string) => {
-  const colors = {
-    todo: 'text-red-600 dark:text-red-400',
-    in_progress: 'text-yellow-600 dark:text-yellow-400',
-    done: 'text-green-600 dark:text-green-400',
-  }
-  return colors[status as keyof typeof colors] || 'text-gray-600 dark:text-gray-400'
-}
-
-const getStatusIcon = (status: string) => {
-  const icons = {
-    todo: '📋',
-    in_progress: '⚡',
-    done: '✅',
-  }
-  return icons[status as keyof typeof icons] || '📝'
-}
 </script>
 
 <template>
@@ -138,7 +122,7 @@ const getStatusIcon = (status: string) => {
                 {{ task.description }}
               </p>
               <div class="flex items-center gap-2 mt-1">
-                <span :class="['text-xs font-medium', getStatusColor(task.status)]">
+                <span :class="['text-xs font-medium', getStatusTextColor(task.status)]">
                   {{ task.status.replace('_', ' ') }}
                 </span>
                 <span class="text-xs text-gray-500 dark:text-gray-500">

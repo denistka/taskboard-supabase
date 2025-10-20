@@ -3,9 +3,10 @@ import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
 import type { Task, TaskStatus, Database } from '@/types'
 import { useAuthStore } from './auth'
-import { useNotifications } from '@/composables/useNotifications'
+import { useSupabaseHelpers } from '@/composables/useSupabaseHelpers'
+import { useErrorHandler } from '@/composables/useErrorHandler'
+import { useTaskSubscription } from '@/composables/useTaskSubscription'
 
-// Define proper types for Supabase operations
 type TaskInsert = Database['public']['Tables']['tasks']['Insert']
 type TaskUpdate = Database['public']['Tables']['tasks']['Update']
 
@@ -14,7 +15,9 @@ export const useTasksStore = defineStore('tasks', () => {
   const loading = ref(false)
   const selectedTask = ref<Task | null>(null)
   const authStore = useAuthStore()
-  const { showTaskEvent } = useNotifications()
+  const { fetchTasksWithProfiles } = useSupabaseHelpers()
+  const { handleDatabaseError } = useErrorHandler()
+  const { subscribeToTasks: createTaskSubscription } = useTaskSubscription()
 
   // Optimized computed property - single pass through tasks
   const tasksByStatus = computed(() => {
@@ -44,24 +47,9 @@ export const useTasksStore = defineStore('tasks', () => {
   const fetchTasks = async (boardId: string) => {
     loading.value = true
     try {
-      const { data, error } = await supabase
-        .from('tasks')
-        .select(`
-          *,
-          profiles:created_by (
-            id,
-            email,
-            full_name,
-            avatar_url
-          )
-        `)
-        .eq('board_id', boardId)
-        .order('position', { ascending: true })
-
-      if (error) throw error
-      tasks.value = data as Task[]
+      tasks.value = await fetchTasksWithProfiles(boardId)
     } catch (error) {
-      console.error('Error fetching tasks:', error)
+      handleDatabaseError(error, 'Fetch Tasks')
     } finally {
       loading.value = false
     }
@@ -82,7 +70,7 @@ export const useTasksStore = defineStore('tasks', () => {
 
     const { data, error } = await supabase
       .from('tasks')
-      .insert(newTask as any)
+      .insert(newTask)
       .select(`
         *,
         profiles:created_by (
@@ -95,7 +83,7 @@ export const useTasksStore = defineStore('tasks', () => {
       .single()
 
     if (error) {
-      console.error('Error creating task:', error)
+      handleDatabaseError(error, 'Create Task')
       throw error
     }
 
@@ -105,7 +93,6 @@ export const useTasksStore = defineStore('tasks', () => {
   }
 
   const updateTask = async (taskId: string, updates: TaskUpdate) => {
-    // Get current task to check version
     const taskIndex = tasks.value.findIndex(t => t.id === taskId)
     const currentTask = taskIndex !== -1 ? tasks.value[taskIndex] : null
     
@@ -113,20 +100,11 @@ export const useTasksStore = defineStore('tasks', () => {
       throw new Error('Task not found')
     }
 
-    // Optimistic update for better UX
+    // Optimistic update
     const originalTask = { ...currentTask }
-    
-    if (taskIndex !== -1) {
-      tasks.value[taskIndex] = { ...tasks.value[taskIndex], ...updates }
-    }
-
-    if (selectedTask.value?.id === taskId) {
-      selectedTask.value = { ...selectedTask.value, ...updates }
-    }
+    applyOptimisticUpdate(taskIndex, taskId, updates)
 
     try {
-      // Use a more sophisticated conflict resolution approach
-      // Instead of blocking on version conflicts, we'll merge changes intelligently
       const updateWithVersion = { 
         ...updates, 
         version: currentTask.version + 1,
@@ -135,44 +113,47 @@ export const useTasksStore = defineStore('tasks', () => {
 
       const { data, error } = await supabase
         .from('tasks')
-        .update(updateWithVersion as any)
+        .update(updateWithVersion)
         .eq('id', taskId)
-        .eq('version', currentTask.version) // Add version check for conflict detection
+        .eq('version', currentTask.version)
         .select()
 
       if (error) {
-        // Revert optimistic update on error
-        if (originalTask && taskIndex !== -1) {
-          tasks.value[taskIndex] = originalTask
-        }
-        if (selectedTask.value?.id === taskId && originalTask) {
-          selectedTask.value = originalTask
-        }
-        console.error('Error updating task:', error)
+        revertOptimisticUpdate(taskIndex, taskId, originalTask)
+        const dbError = handleDatabaseError(error, 'Update Task')
         
-        // Handle version conflict specifically
-        if (error.code === 'PGRST116' || error.message?.includes('version')) {
+        if (dbError.isConflict) {
           throw new Error('This task was modified by another user. Please refresh and try again.')
         }
-        
         throw error
       }
 
-      // Update successful - update local task with new version
+      // Update with server response
       if (data && data[0] && taskIndex !== -1) {
         const updatedTask = data[0] as Task
         tasks.value[taskIndex] = { ...tasks.value[taskIndex], ...updatedTask }
       }
-
     } catch (error) {
-      // Revert optimistic update on error
-      if (originalTask && taskIndex !== -1) {
-        tasks.value[taskIndex] = originalTask
-      }
-      if (selectedTask.value?.id === taskId && originalTask) {
-        selectedTask.value = originalTask
-      }
+      revertOptimisticUpdate(taskIndex, taskId, originalTask)
       throw error
+    }
+  }
+
+  const applyOptimisticUpdate = (taskIndex: number, taskId: string, updates: Partial<Task>) => {
+    if (taskIndex !== -1) {
+      tasks.value[taskIndex] = { ...tasks.value[taskIndex], ...updates }
+    }
+    if (selectedTask.value?.id === taskId) {
+      selectedTask.value = { ...selectedTask.value, ...updates }
+    }
+  }
+
+  const revertOptimisticUpdate = (taskIndex: number, taskId: string, originalTask: Task) => {
+    if (taskIndex !== -1) {
+      tasks.value[taskIndex] = originalTask
+    }
+    if (selectedTask.value?.id === taskId) {
+      selectedTask.value = originalTask
     }
   }
 
@@ -183,7 +164,7 @@ export const useTasksStore = defineStore('tasks', () => {
       .eq('id', taskId)
 
     if (error) {
-      console.error('Error deleting task:', error)
+      handleDatabaseError(error, 'Delete Task')
       throw error
     }
 
@@ -194,110 +175,46 @@ export const useTasksStore = defineStore('tasks', () => {
   }
 
   const subscribeToTasks = (boardId: string) => {
-    const channel = supabase
-      .channel('tasks-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'tasks',
-          filter: `board_id=eq.${boardId}`,
-        },
-        async (payload) => {
-          if (payload.eventType === 'INSERT') {
-            // Use the payload data directly instead of making additional queries
-            const newTask = payload.new as Task
-            if (!tasks.value.find(t => t.id === newTask.id)) {
-              // Fetch profile data only if not present
-              if (!newTask.profiles) {
-                const { data: profileData } = await supabase
-                  .from('profiles')
-                  .select('id, email, full_name, avatar_url')
-                  .eq('id', newTask.created_by)
-                  .single()
-                
-                if (profileData) {
-                  newTask.profiles = profileData
-                }
-              }
-              
-              tasks.value.push(newTask)
-              
-              // Show notification for other users' actions
-              if (authStore.user && newTask.created_by !== authStore.user.id) {
-                showTaskEvent('task_created', newTask.title, 'Created', {
-                  id: newTask.created_by,
-                  name: newTask.profiles?.full_name || newTask.profiles?.email?.split('@')[0] || 'User'
-                })
-              }
-              
-              // Auto-select newly created task if it's created by current user
-              if (authStore.user && newTask.created_by === authStore.user.id) {
-                selectedTask.value = newTask
-              }
-            }
-          } else if (payload.eventType === 'UPDATE') {
-            const taskIndex = tasks.value.findIndex(t => t.id === payload.new.id)
-            if (taskIndex !== -1) {
-              // Only update if there are actual changes to avoid unnecessary re-renders
-              const currentTask = tasks.value[taskIndex]
-              const hasChanges = Object.keys(payload.new).some(key => 
-                currentTask[key as keyof Task] !== payload.new[key]
-              )
-              
-              if (hasChanges) {
-                const updatedTask = { ...currentTask, ...payload.new as Task }
-                tasks.value[taskIndex] = updatedTask
-                
-                // Show notification for other users' actions
-                if (authStore.user && currentTask.created_by !== authStore.user.id) {
-                  const statusChanged = currentTask.status !== updatedTask.status
-                  const titleChanged = currentTask.title !== updatedTask.title
-                  
-                  if (statusChanged) {
-                    showTaskEvent('task_moved', updatedTask.title, `Moved to ${updatedTask.status.replace('_', ' ')}`, {
-                      id: currentTask.created_by,
-                      name: currentTask.profiles?.full_name || currentTask.profiles?.email?.split('@')[0] || 'User'
-                    }, { from: currentTask.status, to: updatedTask.status })
-                  } else if (titleChanged) {
-                    showTaskEvent('task_updated', updatedTask.title, 'Updated', {
-                      id: currentTask.created_by,
-                      name: currentTask.profiles?.full_name || currentTask.profiles?.email?.split('@')[0] || 'User'
-                    })
-                  }
-                }
-                
-                // Update selectedTask if it's the same task
-                if (selectedTask.value?.id === payload.new.id) {
-                  selectedTask.value = updatedTask
-                }
-              }
-            }
-          } else if (payload.eventType === 'DELETE') {
-            const deletedTask = payload.old as Task
-            tasks.value = tasks.value.filter(t => t.id !== payload.old.id)
+    return createTaskSubscription(boardId, authStore.user?.id, {
+      onInsert: (newTask) => {
+        if (!tasks.value.find(t => t.id === newTask.id)) {
+          tasks.value.push(newTask)
+          
+          // Auto-select newly created task if it's created by current user
+          if (authStore.user && newTask.created_by === authStore.user.id) {
+            selectedTask.value = newTask
+          }
+        }
+      },
+      onUpdate: (taskId, updatedTask) => {
+        const taskIndex = tasks.value.findIndex(t => t.id === taskId)
+        if (taskIndex !== -1) {
+          const currentTask = tasks.value[taskIndex]
+          
+          // Only update if there are actual changes
+          const hasChanges = Object.keys(updatedTask).some(key => 
+            currentTask[key as keyof Task] !== updatedTask[key as keyof Task]
+          )
+          
+          if (hasChanges) {
+            tasks.value[taskIndex] = { ...currentTask, ...updatedTask }
             
-            // Show notification for other users' actions
-            if (authStore.user && deletedTask.created_by !== authStore.user.id) {
-              showTaskEvent('task_deleted', deletedTask.title, 'Deleted', {
-                id: deletedTask.created_by,
-                name: deletedTask.profiles?.full_name || deletedTask.profiles?.email?.split('@')[0] || 'User'
-              })
-            }
-            
-            // Clear selectedTask if it was deleted
-            if (selectedTask.value?.id === payload.old.id) {
-              selectedTask.value = null
+            // Update selectedTask if it's the same task
+            if (selectedTask.value?.id === taskId) {
+              selectedTask.value = { ...selectedTask.value, ...updatedTask }
             }
           }
         }
-      )
-      .subscribe()
-
-    return () => {
-      channel.unsubscribe()
-    }
+      },
+      onDelete: (taskId) => {
+        tasks.value = tasks.value.filter(t => t.id !== taskId)
+        
+        // Clear selectedTask if it was deleted
+        if (selectedTask.value?.id === taskId) {
+          selectedTask.value = null
+        }
+      }
+    })
   }
 
   const selectTask = (task: Task | null) => {
@@ -352,7 +269,7 @@ export const useTasksStore = defineStore('tasks', () => {
       for (const taskToUpdate of tasksToUpdate) {
         await supabase
           .from('tasks')
-          .update({ position: taskToUpdate.position } as any)
+          .update({ position: taskToUpdate.position })
           .eq('id', taskToUpdate.id)
       }
     } catch (error) {

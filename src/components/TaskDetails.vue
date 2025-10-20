@@ -3,6 +3,8 @@ import { ref, watch, computed } from 'vue'
 import type { Task, TaskStatus } from '@/types'
 import { usePresenceStore } from '@/stores/presence'
 import { useAuthStore } from '@/stores/auth'
+import { useFormatters } from '@/composables/useFormatters'
+import { useTaskStatus } from '@/composables/useTaskStatus'
 
 interface Props {
   task: Task | null
@@ -12,6 +14,8 @@ interface Props {
 const props = defineProps<Props>()
 const presenceStore = usePresenceStore()
 const authStore = useAuthStore()
+const { formatDateTime } = useFormatters()
+const { getStatusColor, getStatusLabel } = useTaskStatus()
 
 const emit = defineEmits<{
   close: []
@@ -118,34 +122,6 @@ const saveChanges = async () => {
   editingFields.value = []
   isEditing.value = false
 }
-
-const formatDate = (date: string) => {
-  return new Date(date).toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
-}
-
-const getStatusColor = (status: TaskStatus) => {
-  const colors = {
-    todo: 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300',
-    in_progress: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300',
-    done: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300',
-  }
-  return colors[status]
-}
-
-const getStatusLabel = (status: TaskStatus) => {
-  const labels = {
-    todo: 'To Do',
-    in_progress: 'In Progress',
-    done: 'Done',
-  }
-  return labels[status]
-}
 </script>
 
 <template>
@@ -247,11 +223,11 @@ const getStatusLabel = (status: TaskStatus) => {
           <div class="grid grid-cols-2 gap-4 text-sm">
             <div>
               <p class="text-gray-500 dark:text-gray-500 mb-1">Created</p>
-              <p class="font-medium text-gray-900 dark:text-gray-100">{{ formatDate(task.created_at) }}</p>
+              <p class="font-medium text-gray-900 dark:text-gray-100">{{ formatDateTime(task.created_at) }}</p>
             </div>
             <div>
               <p class="text-gray-500 dark:text-gray-500 mb-1">Updated</p>
-              <p class="font-medium text-gray-900 dark:text-gray-100">{{ formatDate(task.updated_at) }}</p>
+              <p class="font-medium text-gray-900 dark:text-gray-100">{{ formatDateTime(task.updated_at) }}</p>
             </div>
           </div>
         </div>

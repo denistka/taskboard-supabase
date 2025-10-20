@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import type { Task } from '@/types'
+import { useFormatters } from '@/composables/useFormatters'
+import { useTaskStatus } from '@/composables/useTaskStatus'
 
 interface Props {
   task: Task
@@ -12,22 +14,16 @@ const emit = defineEmits<{
   delete: []
 }>()
 
-const formatDate = (date: string) => {
-  return new Date(date).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-  })
-}
+const { formatDate } = useFormatters()
+const { getStatusBorderColor } = useTaskStatus()
 </script>
 
 <template>
   <button
-    class="card p-4 cursor-pointer hover:shadow-xl transition-all duration-300 group hover:scale-[1.02] bg-white dark:bg-gray-800 border-l-4 m-1 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 w-full text-left"
-    :class="{
-      'border-l-red-500 dark:border-l-red-400': task.status === 'todo',
-      'border-l-yellow-500 dark:border-l-yellow-400': task.status === 'in_progress',
-      'border-l-green-500 dark:border-l-green-400': task.status === 'done',
-    }"
+    :class="[
+      'card p-4 cursor-pointer hover:shadow-xl transition-all duration-300 group hover:scale-[1.02] bg-white dark:bg-gray-800 border-l-4 m-1 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 w-full text-left',
+      getStatusBorderColor(task.status)
+    ]"
     :aria-label="`Task: ${task.title}. Status: ${task.status.replace('_', ' ')}. Click to view details.`"
     @click="emit('click')"
   >

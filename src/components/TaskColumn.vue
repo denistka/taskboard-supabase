@@ -2,6 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import type { Task, TaskStatus } from '@/types'
 import TaskCard from './TaskCard.vue'
+import CreateTaskForm from './CreateTaskForm.vue'
 import Sortable from 'sortablejs'
 import { onMounted } from 'vue'
 import { usePresenceStore } from '@/stores/presence'
@@ -28,15 +29,13 @@ const emit = defineEmits<{
 }>()
 
 const isCreating = ref(false)
-const newTitle = ref('')
-const newDescription = ref('')
 const columnRef = ref<HTMLElement | null>(null)
 
 const taskCount = computed(() => props.tasks.length)
 
-const handleCreate = () => {
-  const sanitizedTitle = sanitizeInput(newTitle.value)
-  const sanitizedDescription = sanitizeInput(newDescription.value)
+const handleCreate = (title: string, description: string) => {
+  const sanitizedTitle = sanitizeInput(title)
+  const sanitizedDescription = sanitizeInput(description)
   
   const validation = validateTaskData(sanitizedTitle, sanitizedDescription)
   
@@ -47,22 +46,19 @@ const handleCreate = () => {
   
   if (sanitizedTitle.trim()) {
     emit('createTask', sanitizedTitle, sanitizedDescription)
-    newTitle.value = ''
-    newDescription.value = ''
     isCreating.value = false
     presenceStore.setEditingState(props.boardId, false)
   }
 }
 
+const handleCancel = () => {
+  isCreating.value = false
+  presenceStore.setEditingState(props.boardId, false)
+}
+
 // Track editing state
 watch(isCreating, (editing) => {
   presenceStore.setEditingState(props.boardId, editing)
-})
-
-watch([newTitle, newDescription], () => {
-  if (isCreating.value) {
-    presenceStore.setEditingState(props.boardId, true)
-  }
 })
 
 onMounted(() => {
@@ -130,37 +126,11 @@ onMounted(() => {
     </div>
 
     <!-- Create Task Form -->
-    <div v-if="isCreating" class="card p-4 mb-4 space-y-3 bg-gray-50 dark:bg-gray-800/50 animate-slide-in">
-      <input
-        v-model="newTitle"
-        type="text"
-        placeholder="Task title..."
-        class="input text-sm"
-        @keyup.enter="handleCreate"
-        autofocus
-      />
-      <textarea
-        v-model="newDescription"
-        placeholder="Description (optional)..."
-        class="input text-sm min-h-[80px] resize-none"
-        rows="3"
-      />
-      <div class="flex gap-2">
-        <button
-          @click="handleCreate"
-          class="btn-primary text-sm px-4 py-2"
-          :disabled="!newTitle.trim()"
-        >
-          Add Task
-        </button>
-        <button
-          @click="isCreating = false; newTitle = ''; newDescription = ''"
-          class="btn-secondary text-sm px-4 py-2"
-        >
-          Cancel
-        </button>
-      </div>
-    </div>
+    <CreateTaskForm 
+      v-if="isCreating"
+      @create="handleCreate"
+      @cancel="handleCancel"
+    />
 
     <!-- Tasks List -->
     <div 

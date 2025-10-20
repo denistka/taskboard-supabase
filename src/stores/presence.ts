@@ -4,20 +4,23 @@ import { supabase } from '@/lib/supabase'
 import type { UserPresence, Database } from '@/types'
 import { useAuthStore } from './auth'
 import { useNotifications } from '@/composables/useNotifications'
+import { useSupabaseHelpers } from '@/composables/useSupabaseHelpers'
+import { useErrorHandler } from '@/composables/useErrorHandler'
 
-// Define proper types for Supabase operations
 type UserPresenceInsert = Database['public']['Tables']['user_presence']['Insert']
 
-// Debounce utility for presence updates
-const debounce = (func: Function, wait: number) => {
-  let timeout: ReturnType<typeof setTimeout>
+// Improved debounce with leading edge option
+const debounce = (func: Function, wait: number, immediate = false) => {
+  let timeout: ReturnType<typeof setTimeout> | null = null
   return function executedFunction(...args: any[]) {
     const later = () => {
-      clearTimeout(timeout)
-      func(...args)
+      timeout = null
+      if (!immediate) func(...args)
     }
-    clearTimeout(timeout)
+    const callNow = immediate && !timeout
+    if (timeout) clearTimeout(timeout)
     timeout = setTimeout(later, wait)
+    if (callNow) func(...args)
   }
 }
 
@@ -26,37 +29,30 @@ export const usePresenceStore = defineStore('presence', () => {
   let presenceInterval: ReturnType<typeof setInterval> | null = null
   let presenceChannel: any = null
   const { showCollaborationEvent } = useNotifications()
+  const { upsertRecord, deleteRecord, fetchActiveUsersForBoard } = useSupabaseHelpers()
+  const { handleError } = useErrorHandler()
 
   const updatePresence = async (boardId: string, isEditing = false, editingTaskId: string | null = null, editingFields: string[] = []) => {
     const authStore = useAuthStore()
     if (!authStore.user) return
 
-    try {
-      const presenceData: UserPresenceInsert = {
-        user_id: authStore.user.id,
-        board_id: boardId,
-        last_seen: new Date().toISOString(),
-        is_editing: isEditing,
-        editing_task_id: editingTaskId,
-        editing_fields: editingFields.length > 0 ? editingFields : null,
-      }
+    const presenceData: UserPresenceInsert = {
+      user_id: authStore.user.id,
+      board_id: boardId,
+      last_seen: new Date().toISOString(),
+      is_editing: isEditing,
+      editing_task_id: editingTaskId,
+      editing_fields: editingFields.length > 0 ? editingFields : null,
+    }
 
-      const { error } = await supabase
-        .from('user_presence')
-        .upsert(presenceData as any, {
-          onConflict: 'user_id,board_id'
-        })
-
-      if (error) {
-        console.error('Error updating presence:', error)
-      }
-    } catch (error) {
-      console.error('Error updating presence:', error)
+    const result = await upsertRecord('user_presence', presenceData, 'user_id,board_id')
+    if (!result.success) {
+      handleError(new Error(result.error), 'Update Presence', false)
     }
   }
   
-  // Debounced editing state updates to prevent excessive API calls
-  const debouncedUpdatePresence = debounce(updatePresence, 2000) // Increased to 2 seconds
+  // Debounced with immediate execution for responsiveness
+  const debouncedUpdatePresence = debounce(updatePresence, 1500, true)
   
   const setEditingState = async (boardId: string, isEditing: boolean, editingTaskId: string | null = null, editingFields: string[] = []) => {
     await debouncedUpdatePresence(boardId, isEditing, editingTaskId, editingFields)
@@ -67,32 +63,8 @@ export const usePresenceStore = defineStore('presence', () => {
   }
 
   const fetchActiveUsers = async (boardId: string) => {
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
     const authStore = useAuthStore()
-
-    const { data, error } = await supabase
-      .from('user_presence')
-      .select(`
-        *,
-        profile:user_id (
-          id,
-          email,
-          full_name,
-          avatar_url
-        )
-      `)
-      .eq('board_id', boardId)
-      .gte('last_seen', fiveMinutesAgo)
-
-    if (error) {
-      console.error('Error fetching presence:', error)
-      return
-    }
-
-    const newUsers = (data as UserPresence[]).map(item => ({
-      ...item,
-      profile: item.profile
-    }))
+    const newUsers = await fetchActiveUsersForBoard(boardId, 5)
 
     // Check for new users joining
     if (authStore.user) {
@@ -100,9 +72,10 @@ export const usePresenceStore = defineStore('presence', () => {
       
       newUsers.forEach(user => {
         if (!currentUserIds.includes(user.user_id) && user.user_id !== authStore.user?.id) {
-          showCollaborationEvent('user_joined', 'User joined', `${user.profile?.full_name || user.profile?.email?.split('@')[0] || 'User'} joined the board`, {
+          const userName = user.profile?.full_name || user.profile?.email?.split('@')[0] || 'User'
+          showCollaborationEvent('user_joined', 'User joined', `${userName} joined the board`, {
             id: user.user_id,
-            name: user.profile?.full_name || user.profile?.email?.split('@')[0] || 'User'
+            name: userName
           })
         }
       })
@@ -121,7 +94,7 @@ export const usePresenceStore = defineStore('presence', () => {
     presenceInterval = setInterval(async () => {
       await updatePresence(boardId)
       await fetchActiveUsers(boardId)
-    }, 30000) // Increased to 30 seconds to reduce API calls
+    }, 20000) // Optimized to 20 seconds
 
     presenceChannel = supabase
       .channel(`user-presence-${boardId}`, {
@@ -167,18 +140,13 @@ export const usePresenceStore = defineStore('presence', () => {
     const authStore = useAuthStore()
     if (!authStore.user) return
 
-    try {
-      const { error } = await supabase
-        .from('user_presence')
-        .delete()
-        .eq('user_id', authStore.user.id)
-        .eq('board_id', boardId)
+    const result = await deleteRecord('user_presence', {
+      user_id: authStore.user.id,
+      board_id: boardId
+    })
 
-      if (error) {
-        console.error('Error removing user presence:', error)
-      }
-    } catch (error) {
-      console.error('Error removing user presence:', error)
+    if (!result.success) {
+      handleError(new Error(result.error), 'Remove Presence', false)
     }
   }
 
