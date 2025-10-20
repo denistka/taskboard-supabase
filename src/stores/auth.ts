@@ -2,6 +2,8 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
+import { usePresenceStore } from './presence'
+import { useBoardStore } from './board'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
@@ -20,8 +22,6 @@ export const useAuthStore = defineStore('auth', () => {
         
         // Handle logout by cleaning up presence
         if (event === 'SIGNED_OUT') {
-          const { usePresenceStore } = await import('./presence')
-          const { useBoardStore } = await import('./board')
           const presenceStore = usePresenceStore()
           const boardStore = useBoardStore()
           
@@ -67,8 +67,6 @@ export const useAuthStore = defineStore('auth', () => {
 
   const signOut = async () => {
     // Stop presence tracking and remove presence record before signing out
-    const { usePresenceStore } = await import('./presence')
-    const { useBoardStore } = await import('./board')
     const presenceStore = usePresenceStore()
     const boardStore = useBoardStore()
     

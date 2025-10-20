@@ -4,85 +4,43 @@ import { useAuthStore } from '@/stores/auth'
 import { useTasksStore } from '@/stores/tasks'
 import { usePresenceStore } from '@/stores/presence'
 import { useBoardStore } from '@/stores/board'
+import { useTaskActions } from '@/composables/useTaskActions'
 import TaskColumn from '@/components/TaskColumn.vue'
 import TaskDetails from '@/components/TaskDetails.vue'
 import PresenceIndicator from '@/components/PresenceIndicator.vue'
 import ThemeSwitcher from '@/components/ThemeSwitcher.vue'
+import LoadingSkeleton from '@/components/LoadingSkeleton.vue'
+import SearchBar from '@/components/SearchBar.vue'
 import type { Task, TaskStatus } from '@/types'
 
 const authStore = useAuthStore()
 const tasksStore = useTasksStore()
 const presenceStore = usePresenceStore()
 const boardStore = useBoardStore()
+const { 
+  handleCreateTask, 
+  handleDeleteTask, 
+  handleTaskClick, 
+  handleTaskMoved, 
+  handleTaskUpdate, 
+  handleTaskDelete 
+} = useTaskActions()
 
 const currentUserId = computed(() => authStore.user?.id)
 
-const handleCreateTask = async (status: TaskStatus, title: string, description: string) => {
-  if (!boardStore.boardId) return
-  try {
-    await tasksStore.createTask(boardStore.boardId, title, description, status)
-  } catch (error) {
-    console.error('Error creating task:', error)
-  }
-}
-
-const handleDeleteTask = async (taskId: string) => {
-  try {
-    await tasksStore.deleteTask(taskId)
-  } catch (error) {
-    console.error('Error deleting task:', error)
-  }
-}
-
-const handleTaskClick = (task: Task) => {
-  tasksStore.selectTask(task)
-}
-
-const handleTaskMoved = async (taskId: string, newStatus: TaskStatus, newPosition: number) => {
-  try {
-    await tasksStore.updateTask(taskId, { status: newStatus, position: newPosition })
-  } catch (error) {
-    console.error('Error moving task:', error)
-  }
-}
-
-const handleTaskUpdate = async (updates: Partial<Task>) => {
-  if (!tasksStore.selectedTask) return
-  try {
-    await tasksStore.updateTask(tasksStore.selectedTask.id, updates)
-  } catch (error) {
-    console.error('Error updating task:', error)
-    // Handle conflict error
-    if (error instanceof Error && error.message.includes('modified by another user')) {
-      // Show conflict notification to user
-      alert('This task was modified by another user. Your changes have been refreshed with the latest version.')
-      // Refresh the selected task to show latest data
-      if (tasksStore.selectedTask) {
-        const refreshedTask = tasksStore.tasks.find(t => t.id === tasksStore.selectedTask?.id)
-        if (refreshedTask) {
-          tasksStore.selectTask(refreshedTask)
-        }
-      }
-    }
-  }
-}
-
-const handleTaskDelete = async () => {
-  if (!tasksStore.selectedTask) return
-  try {
-    await tasksStore.deleteTask(tasksStore.selectedTask.id)
-    tasksStore.selectTask(null)
-  } catch (error) {
-    console.error('Error deleting task:', error)
-  }
-}
+// Column configuration
+const columnConfig = computed(() => [
+  { title: "📋 To Do", status: "todo" as TaskStatus, color: "red", tasks: tasksStore.todoTasks },
+  { title: "⚡ In Progress", status: "in_progress" as TaskStatus, color: "yellow", tasks: tasksStore.inProgressTasks },
+  { title: "✅ Done", status: "done" as TaskStatus, color: "green", tasks: tasksStore.doneTasks }
+])
 
 const handleSignOut = async () => {
   try {
     await authStore.signOut()
     // Router will handle redirect after auth state change
-  } catch (error) {
-    console.error('Error signing out:', error)
+  } catch (err) {
+    console.error('Error signing out:', err)
   }
 }
 
@@ -99,11 +57,33 @@ onUnmounted(() => {
 <template>
   <div class="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
     <!-- Loading State -->
-    <div v-if="boardStore.loading" class="min-h-screen flex items-center justify-center">
-      <div class="text-center">
-        <div class="w-16 h-16 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-        <p class="text-gray-600 dark:text-gray-400 font-medium">Loading your board...</p>
-      </div>
+    <div v-if="boardStore.loading" class="min-h-screen">
+      <header class="sticky top-0 z-30 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-200 dark:border-gray-800 shadow-sm">
+        <div class="max-w-[1800px] mx-auto px-6 py-4">
+          <div class="flex items-center justify-between">
+            <div class="animate-pulse">
+              <div class="h-8 bg-gray-200 dark:bg-gray-700 rounded w-32 mb-2"></div>
+              <div class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-48"></div>
+            </div>
+            <div class="flex items-center gap-4">
+              <div class="flex gap-2">
+                <div class="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse"></div>
+                <div class="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded-full animate-pulse"></div>
+              </div>
+              <div class="w-8 h-8 bg-gray-200 dark:bg-gray-700 rounded animate-pulse"></div>
+              <div class="h-10 bg-gray-200 dark:bg-gray-700 rounded-lg w-24 animate-pulse"></div>
+            </div>
+          </div>
+        </div>
+      </header>
+      
+      <main class="max-w-[1800px] mx-auto px-6 py-8">
+        <div class="flex justify-center">
+          <div class="flex gap-6 pb-6 overflow-x-auto px-4">
+            <LoadingSkeleton type="board" :count="4" />
+          </div>
+        </div>
+      </main>
     </div>
 
     <!-- Board Content -->
@@ -117,6 +97,14 @@ onUnmounted(() => {
             <div>
               <h1 class="text-2xl font-bold text-gradient">Task Board</h1>
               <p class="text-sm text-gray-600 dark:text-gray-400">Collaborate in real-time</p>
+            </div>
+
+            <!-- Center: Search -->
+            <div class="flex-1 max-w-md mx-8">
+              <SearchBar 
+                :tasks="tasksStore.tasks"
+                :on-task-select="handleTaskClick"
+              />
             </div>
 
             <!-- Right: Online Users & Actions -->
@@ -138,7 +126,7 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <!-- Mobile/Tablet: Two row layout -->
+          <!-- Mobile/Tablet: Multi-row layout -->
           <div class="lg:hidden">
             <!-- First row: Title and Actions -->
             <div class="flex items-center justify-between mb-3">
@@ -160,7 +148,15 @@ onUnmounted(() => {
               </div>
             </div>
             
-            <!-- Second row: Online Users -->
+            <!-- Second row: Search -->
+            <div class="mb-3">
+              <SearchBar 
+                :tasks="tasksStore.tasks"
+                :on-task-select="handleTaskClick"
+              />
+            </div>
+            
+            <!-- Third row: Online Users -->
             <div class="flex justify-end">
               <PresenceIndicator 
                 :users="presenceStore.activeUsers"
@@ -175,47 +171,20 @@ onUnmounted(() => {
       <main class="max-w-[1800px] mx-auto px-6 py-8 overflow-y-hidden">
         <div class="flex justify-center">
           <div class="flex gap-6 pb-6 overflow-x-auto px-4">
-          <!-- To Do Column -->
-          <TaskColumn
-            v-if="boardStore.boardId"
-            title="📋 To Do"
-            status="todo"
-            :tasks="tasksStore.todoTasks"
-            :board-id="boardStore.boardId"
-            color="red"
-            @create-task="(title, description) => handleCreateTask('todo', title, description)"
-            @delete-task="handleDeleteTask"
-            @task-click="handleTaskClick"
-            @task-moved="handleTaskMoved"
-          />
-
-          <!-- In Progress Column -->
-          <TaskColumn
-            v-if="boardStore.boardId"
-            title="⚡ In Progress"
-            status="in_progress"
-            :tasks="tasksStore.inProgressTasks"
-            :board-id="boardStore.boardId"
-            color="yellow"
-            @create-task="(title, description) => handleCreateTask('in_progress', title, description)"
-            @delete-task="handleDeleteTask"
-            @task-click="handleTaskClick"
-            @task-moved="handleTaskMoved"
-          />
-
-          <!-- Done Column -->
-          <TaskColumn
-            v-if="boardStore.boardId"
-            title="✅ Done"
-            status="done"
-            :tasks="tasksStore.doneTasks"
-            :board-id="boardStore.boardId"
-            color="green"
-            @create-task="(title, description) => handleCreateTask('done', title, description)"
-            @delete-task="handleDeleteTask"
-            @task-click="handleTaskClick"
-            @task-moved="handleTaskMoved"
-          />
+            <TaskColumn
+              v-for="column in columnConfig"
+              :key="column.status"
+              v-if="boardStore.boardId"
+              :title="column.title"
+              :status="column.status"
+              :tasks="column.tasks"
+              :board-id="boardStore.boardId"
+              :color="column.color"
+              @create-task="(title, description) => handleCreateTask(column.status, title, description)"
+              @delete-task="handleDeleteTask"
+              @task-click="handleTaskClick"
+              @task-moved="handleTaskMoved"
+            />
           </div>
         </div>
       </main>

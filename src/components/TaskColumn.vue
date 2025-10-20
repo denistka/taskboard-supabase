@@ -5,6 +5,8 @@ import TaskCard from './TaskCard.vue'
 import Sortable from 'sortablejs'
 import { onMounted } from 'vue'
 import { usePresenceStore } from '@/stores/presence'
+import { validateTaskData, sanitizeInput } from '@/utils/validation'
+import { useNotifications } from '@/composables/useNotifications'
 
 interface Props {
   title: string
@@ -16,6 +18,7 @@ interface Props {
 
 const props = defineProps<Props>()
 const presenceStore = usePresenceStore()
+const { showError } = useNotifications()
 
 const emit = defineEmits<{
   createTask: [title: string, description: string]
@@ -32,8 +35,18 @@ const columnRef = ref<HTMLElement | null>(null)
 const taskCount = computed(() => props.tasks.length)
 
 const handleCreate = () => {
-  if (newTitle.value.trim()) {
-    emit('createTask', newTitle.value, newDescription.value)
+  const sanitizedTitle = sanitizeInput(newTitle.value)
+  const sanitizedDescription = sanitizeInput(newDescription.value)
+  
+  const validation = validateTaskData(sanitizedTitle, sanitizedDescription)
+  
+  if (!validation.isValid) {
+    showError('Validation Error', validation.errors.join(', '))
+    return
+  }
+  
+  if (sanitizedTitle.trim()) {
+    emit('createTask', sanitizedTitle, sanitizedDescription)
     newTitle.value = ''
     newDescription.value = ''
     isCreating.value = false
@@ -61,7 +74,20 @@ onMounted(() => {
         animation: 150,
         ghostClass: 'dragging',
         dragClass: 'dragging',
+        delay: 200, // Delay before drag starts on mobile (long press)
+        touchStartThreshold: 5, // Touch threshold for mobile
+        onStart: () => {
+          // Add haptic feedback on mobile if available
+          if ('vibrate' in navigator) {
+            navigator.vibrate(50)
+          }
+          // Add body class to prevent selection globally
+          document.body.classList.add('sortable-dragging')
+        },
         onEnd: (evt) => {
+          // Remove body class to restore normal selection
+          document.body.classList.remove('sortable-dragging')
+          
           const taskId = evt.item.dataset.taskId
           const newStatus = evt.to.dataset.status as TaskStatus
           const newPosition = evt.newIndex || 0

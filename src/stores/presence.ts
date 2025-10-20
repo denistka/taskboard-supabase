@@ -1,18 +1,12 @@
 import { defineStore } from 'pinia'
-import { ref, onUnmounted } from 'vue'
+import { ref } from 'vue'
 import { supabase } from '@/lib/supabase'
-import type { UserPresence } from '@/types'
+import type { UserPresence, Database } from '@/types'
 import { useAuthStore } from './auth'
+import { useNotifications } from '@/composables/useNotifications'
 
 // Define proper types for Supabase operations
-interface UserPresenceInsert {
-  user_id: string
-  board_id: string
-  last_seen?: string
-  is_editing?: boolean
-  editing_task_id?: string | null
-  editing_fields?: string[] | null
-}
+type UserPresenceInsert = Database['public']['Tables']['user_presence']['Insert']
 
 // Debounce utility for presence updates
 const debounce = (func: Function, wait: number) => {
@@ -31,6 +25,7 @@ export const usePresenceStore = defineStore('presence', () => {
   const activeUsers = ref<UserPresence[]>([])
   let presenceInterval: ReturnType<typeof setInterval> | null = null
   let presenceChannel: any = null
+  const { showCollaborationEvent } = useNotifications()
 
   const updatePresence = async (boardId: string, isEditing = false, editingTaskId: string | null = null, editingFields: string[] = []) => {
     const authStore = useAuthStore()
@@ -46,9 +41,9 @@ export const usePresenceStore = defineStore('presence', () => {
         editing_fields: editingFields.length > 0 ? editingFields : null,
       }
 
-      const { error } = await (supabase as any)
+      const { error } = await supabase
         .from('user_presence')
-        .upsert(presenceData, {
+        .upsert(presenceData as any, {
           onConflict: 'user_id,board_id'
         })
 
@@ -61,7 +56,7 @@ export const usePresenceStore = defineStore('presence', () => {
   }
   
   // Debounced editing state updates to prevent excessive API calls
-  const debouncedUpdatePresence = debounce(updatePresence, 500)
+  const debouncedUpdatePresence = debounce(updatePresence, 2000) // Increased to 2 seconds
   
   const setEditingState = async (boardId: string, isEditing: boolean, editingTaskId: string | null = null, editingFields: string[] = []) => {
     await debouncedUpdatePresence(boardId, isEditing, editingTaskId, editingFields)
@@ -73,6 +68,7 @@ export const usePresenceStore = defineStore('presence', () => {
 
   const fetchActiveUsers = async (boardId: string) => {
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
+    const authStore = useAuthStore()
 
     const { data, error } = await supabase
       .from('user_presence')
@@ -93,10 +89,26 @@ export const usePresenceStore = defineStore('presence', () => {
       return
     }
 
-    activeUsers.value = (data as UserPresence[]).map(item => ({
+    const newUsers = (data as UserPresence[]).map(item => ({
       ...item,
       profile: item.profile
     }))
+
+    // Check for new users joining
+    if (authStore.user) {
+      const currentUserIds = activeUsers.value.map(u => u.user_id)
+      
+      newUsers.forEach(user => {
+        if (!currentUserIds.includes(user.user_id) && user.user_id !== authStore.user?.id) {
+          showCollaborationEvent('user_joined', 'User joined', `${user.profile?.full_name || user.profile?.email?.split('@')[0] || 'User'} joined the board`, {
+            id: user.user_id,
+            name: user.profile?.full_name || user.profile?.email?.split('@')[0] || 'User'
+          })
+        }
+      })
+    }
+
+    activeUsers.value = newUsers
   }
 
   const startPresenceTracking = async (boardId: string) => {
@@ -109,7 +121,7 @@ export const usePresenceStore = defineStore('presence', () => {
     presenceInterval = setInterval(async () => {
       await updatePresence(boardId)
       await fetchActiveUsers(boardId)
-    }, 10000) // Reduced to 10 seconds for more responsive updates
+    }, 30000) // Increased to 30 seconds to reduce API calls
 
     presenceChannel = supabase
       .channel(`user-presence-${boardId}`, {
@@ -170,9 +182,10 @@ export const usePresenceStore = defineStore('presence', () => {
     }
   }
 
-  onUnmounted(() => {
-    stopPresenceTracking()
-  })
+  // Remove onUnmounted from store - it should be handled in components
+  // onUnmounted(() => {
+  //   stopPresenceTracking()
+  // })
 
   const forceRefreshPresence = async (boardId: string) => {
     await fetchActiveUsers(boardId)

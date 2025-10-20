@@ -27,6 +27,11 @@
 
   .card {
     @apply bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-gray-100 dark:border-gray-800 transition-all duration-300;
+    /* Prevent text selection on all cards (task cards, column headers, etc.) */
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
   }
 
   .input {
@@ -45,6 +50,85 @@
 
   .text-gradient {
     @apply bg-clip-text text-transparent bg-gradient-primary;
+  }
+}
+
+/* ========================================
+   DRAG & DROP STYLES
+   ======================================== */
+
+/* Selection Prevention - Always Active */
+.sortable-chosen,
+.sortable-drag,
+.sortable-ghost {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+}
+
+/* Selection Prevention - During Drag Operations */
+body.sortable-dragging {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+}
+
+body.sortable-dragging * {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+}
+
+/* Disable Interactive Elements During Drag */
+body.sortable-dragging button,
+body.sortable-dragging a,
+body.sortable-dragging input,
+body.sortable-dragging textarea,
+body.sortable-dragging select {
+  pointer-events: none !important;
+}
+
+/* Prevent Image Dragging */
+.sortable-chosen img,
+.sortable-drag img,
+.sortable-ghost img {
+  pointer-events: none !important;
+  user-drag: none !important;
+  -webkit-user-drag: none !important;
+  -khtml-user-drag: none !important;
+  -moz-user-drag: none !important;
+  -o-user-drag: none !important;
+  user-select: none !important;
+}
+
+/* Drag Visual Effects - Desktop */
+.sortable-chosen {
+  transform: scale(1.02) rotate(1deg) !important;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15) !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+.sortable-drag {
+  transform: rotate(3deg) scale(1.05) !important;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2) !important;
+  z-index: 1000 !important;
+}
+
+/* Drag Visual Effects - Mobile */
+@media (max-width: 768px) {
+  .sortable-chosen {
+    transform: scale(1.02) rotate(2deg) !important;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15) !important;
+    transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+  }
+  
+  .sortable-drag {
+    transform: rotate(5deg) scale(1.05) !important;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2) !important;
+    z-index: 1000 !important;
   }
 }
 

@@ -21,13 +21,14 @@ const formatDate = (date: string) => {
 </script>
 
 <template>
-  <div
-    class="card p-4 cursor-pointer hover:shadow-xl transition-all duration-300 group hover:scale-[1.02] bg-white dark:bg-gray-800 border-l-4 m-1"
+  <button
+    class="card p-4 cursor-pointer hover:shadow-xl transition-all duration-300 group hover:scale-[1.02] bg-white dark:bg-gray-800 border-l-4 m-1 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900 w-full text-left"
     :class="{
-      'border-l-red-500': task.status === 'todo',
-      'border-l-yellow-500': task.status === 'in_progress',
-      'border-l-green-500': task.status === 'done',
+      'border-l-red-500 dark:border-l-red-400': task.status === 'todo',
+      'border-l-yellow-500 dark:border-l-yellow-400': task.status === 'in_progress',
+      'border-l-green-500 dark:border-l-green-400': task.status === 'done',
     }"
+    :aria-label="`Task: ${task.title}. Status: ${task.status.replace('_', ' ')}. Click to view details.`"
     @click="emit('click')"
   >
     <div class="flex items-start justify-between mb-3">
@@ -36,8 +37,10 @@ const formatDate = (date: string) => {
       </h3>
       <button
         @click.stop="emit('delete')"
-        class="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500"
+        class="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-red-500 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1 dark:focus:ring-offset-gray-800"
+        :aria-label="`Delete task: ${task.title}`"
         title="Delete task"
+        type="button"
       >
         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -58,7 +61,7 @@ const formatDate = (date: string) => {
       </div>
       <span>{{ formatDate(task.created_at) }}</span>
     </div>
-  </div>
+  </button>
 </template>
 
 <style scoped>

@@ -44,7 +44,7 @@ export const useBoardStore = defineStore('board', () => {
             name: 'My Task Board',
             description: 'Collaborative task planning board',
             created_by: authStore.user.id,
-          } as any)
+          })
           .select('id')
           .single()
 
