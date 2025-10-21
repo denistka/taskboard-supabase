@@ -36,7 +36,6 @@ export class ParticleManager {
       this.particles.push(new Particle(0, 0, color, pattern, speed))
     }
     
-    console.log(`[ParticleManager] Created ${count} particles, ${orbitCount} orbit particles (electron-like)`)
   }
 
   // Update all particles

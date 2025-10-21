@@ -13,9 +13,6 @@ export class DeltaTimeCalculator {
   private targetSpeed: Ref<number> = ref(this.MAGNETIC_SPEED)
   private slowdownInterval: ReturnType<typeof setInterval> | null = null
   
-  // Debug logging
-  private lastDebugTime = 0
-  private readonly DEBUG_INTERVAL = 1000 // Log every 300ms
 
   constructor() {
     // Interval will be started explicitly via startMagneticSystem()
@@ -33,7 +30,6 @@ export class DeltaTimeCalculator {
     }
     
     this.slowdownInterval = setInterval(() => {
-        console.log('slowdownInterval', this.currentSpeed.value, this.targetSpeed.value)
       // Move current speed towards target (magnetic effect)
       if (this.currentSpeed.value > this.targetSpeed.value) {
         this.currentSpeed.value = Math.max(
@@ -46,9 +42,6 @@ export class DeltaTimeCalculator {
           this.currentSpeed.value + this.SLOWDOWN_STEP
         )
       }
-      
-      // Debug logging every 300ms (presence count will be passed from outside)
-      this.logDebugInfo(0) // Default to 0, will be updated by external calls
     }, this.SLOWDOWN_INTERVAL)
   }
 
@@ -105,14 +98,6 @@ export class DeltaTimeCalculator {
     this.setTargetSpeed(targetSpeed)
   }
 
-  // Debug logging with 300ms intervals
-  private logDebugInfo = (presenceEventCount: number = 0) => {
-    const now = Date.now()
-    if (now - this.lastDebugTime >= this.DEBUG_INTERVAL) {
-      console.log(`[MagneticSpeed] Current: ${this.currentSpeed.value.toFixed(3)}, Target: ${this.targetSpeed.value.toFixed(3)}, Presence: ${presenceEventCount}`)
-      this.lastDebugTime = now
-    }
-  }
 
   // Cleanup
   public cleanup = () => {
