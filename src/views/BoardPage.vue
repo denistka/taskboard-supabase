@@ -4,7 +4,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useTasksStore } from '@/stores/tasks'
 import { useBoardStore } from '@/stores/board'
 import TaskColumn from '@/components/TaskColumn.vue'
-import TaskDetails from '@/components/TaskDetails.vue'
+import TaskDetails from '@/components/TaskDetails/Index.vue'
 import PageLayout from '@/components/PageLayout.vue'
 import type { Task, TaskStatus } from '@/types'
 
