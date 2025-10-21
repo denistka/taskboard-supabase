@@ -2,8 +2,8 @@
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { ArrowRightIcon } from '@/components/icons'
-import DecorativeBackground from '@/components/DecorativeBackground.vue'
 import FeaturesGrid from '@/components/FeaturesGrid.vue'
+import PageLayout from '@/components/PageLayout.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -14,13 +14,10 @@ const goToBoard = () => {
 </script>
 
 <template>
-  <div class="min-h-screen relative overflow-hidden bg-gradient-to-br from-primary-50 via-accent-50 to-primary-100 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
-    <DecorativeBackground />
-
-
+  <PageLayout>
     <!-- Content -->
     <div class="relative flex flex-col items-center justify-center min-h-screen px-6">
-      <!-- Header -->
+      <!-- Information -->
       <div class="mb-12 animate-fade-in text-center">
         <h1 class="text-6xl md:text-7xl font-bold mb-6 leading-tight p-12">
           <span class="text-gradient bg-gradient-to-r from-primary-400 to-accent-400">Task Planning Board</span>
@@ -53,6 +50,6 @@ const goToBoard = () => {
         </p>
       </div>
     </div>
-  </div>
+  </PageLayout>
 </template>
 

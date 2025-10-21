@@ -38,7 +38,7 @@ const toggleMode = () => {
 </script>
 
 <template>
-  <div class="glass-card p-8 shadow-2xl animate-slide-in">
+  <div class="glass-card p-8 shadow-2xl animate-fade-in">
     <!-- header -->
     <div class="text-center mb-8">
       <h2 class="text-3xl font-bold text-gradient">

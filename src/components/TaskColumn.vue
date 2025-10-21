@@ -94,8 +94,9 @@ onMounted(() => {
 </script>
 
 <template>
-  <div ref="columnRef" class="flex-1 min-w-[320px] max-w-[400px] flex flex-col relative z-30">
-    <div class="glass-card p-4 mb-4 border-t-4 relative z-10" :class="`border-t-${color}-500`">
+  <div ref="columnRef" class="flex-1 min-w-[320px] max-w-[400px] flex flex-col relative z-30 h-full w-[320px] flex-shrink-0">
+    <!-- Fixed Header -->
+    <div class="z-10 bg-white/30 dark:bg-gray-900/30 backdrop-blur-xl border border-white/20 dark:border-gray-700/30 rounded-2xl p-4 border-t-4 relative z-10 flex-shrink-0 shadow-lg" :class="`border-t-${color}-500`">
       <div class="flex items-center justify-between mb-2">
         <div class="flex items-center gap-3">
           <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">
@@ -116,65 +117,79 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- Create Task Form -->
-    <div v-if="isCreating" class="glass-subtle p-4 mb-4 space-y-3 animate-slide-in relative z-40">
-      <input
-        v-model="newTitle"
-        type="text"
-        placeholder="Task title..."
-        class="input text-sm"
-        @keyup.enter="handleCreate"
-        autofocus
-      />
-      <textarea
-        v-model="newDescription"
-        placeholder="Description (optional)..."
-        class="input text-sm min-h-[80px] resize-none"
-        rows="3"
-      />
-      <div class="flex gap-2">
-        <button
-          @click="handleCreate"
-          class="btn-primary text-sm px-4 py-2"
-          :disabled="!newTitle.trim()"
-        >
-          Add Task
-        </button>
-        <button
-          @click="resetForm"
-          class="btn-secondary text-sm px-4 py-2"
-        >
-          Cancel
-        </button>
-      </div>
-    </div>
-
-    <!-- Tasks List -->
-    <div 
-      class="tasks-container flex-1 space-y-3 overflow-visible p-2 relative z-10"
-      :data-status="status"
-    >
-      <div
-        v-for="task in tasks"
-        :key="task.id"
-        :data-task-id="task.id"
-        class="cursor-move relative z-10"
-      >
-        <TaskCard
-          :task="task"
-          :active-users="activeUsers"
-          :current-user-id="currentUserId"
-          @click="emit('taskClick', task)"
-          @delete="emit('deleteTask', task.id)"
+    <!-- Scrollable Content Area -->
+    <div class="flex-1 flex flex-col overflow-hidden">
+      <!-- Create Task Form -->
+      <div v-if="isCreating" class="glass-subtle p-4 my-4 space-y-3 animate-slide-in relative z-40 flex-shrink-0">
+        <input
+          v-model="newTitle"
+          type="text"
+          placeholder="Task title..."
+          class="input text-sm"
+          @keyup.enter="handleCreate"
+          autofocus
         />
+        <textarea
+          v-model="newDescription"
+          placeholder="Description (optional)..."
+          class="input text-sm min-h-[80px] resize-none"
+          rows="3"
+        />
+        <div class="flex gap-2">
+          <button
+            @click="handleCreate"
+            class="btn-primary text-sm px-4 py-2"
+            :disabled="!newTitle.trim()"
+          >
+            Add Task
+          </button>
+          <button
+            @click="resetForm"
+            class="btn-secondary text-sm px-4 py-2"
+          >
+            Cancel
+          </button>
+        </div>
       </div>
-      <div
-        v-if="tasks.length === 0 && !isCreating"
-        class="text-center py-12 text-gray-400 dark:text-gray-600"
+
+      <!-- Tasks List -->
+      <div 
+        class="tasks-container flex-1 space-y-3 overflow-y-auto p-2 relative z-10 scrollbar-hide min-h-[200px]"
+        :data-status="status"
+        :class="{ 'empty-column': tasks.length === 0 && !isCreating }"
       >
-        <DocumentIcon class="w-16 h-16 mx-auto mb-4 opacity-50" />
-        <p class="text-sm font-medium">No tasks yet</p>
-        <p class="text-xs mt-1">Click + to add a task</p>
+        <!-- Empty state background -->
+        <div
+          v-if="tasks.length === 0 && !isCreating"
+          class="absolute top-0 left-0 right-0 bottom-0 flex flex-col items-center pt-4 text-gray-400 dark:text-gray-600 pointer-events-none z-0"
+        >
+          <DocumentIcon class="w-16 h-16 mb-4 opacity-30" />
+          <p class="text-sm font-medium opacity-60">No tasks yet</p>
+          <p class="text-xs mt-1 opacity-50">Click + to add a task</p>
+        </div>
+        
+        <!-- Drop zone for empty columns -->
+        <div
+          v-if="tasks.length === 0 && !isCreating"
+          class="absolute inset-0 z-5"
+          data-drop-zone="true"
+        ></div>
+        
+        <!-- Tasks -->
+        <div
+          v-for="task in tasks"
+          :key="task.id"
+          :data-task-id="task.id"
+          class="cursor-move relative z-10"
+        >
+          <TaskCard
+            :task="task"
+            :active-users="activeUsers"
+            :current-user-id="currentUserId"
+            @click="emit('taskClick', task)"
+            @delete="emit('deleteTask', task.id)"
+          />
+        </div>
       </div>
     </div>
   </div>

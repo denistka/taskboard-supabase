@@ -5,7 +5,7 @@ import { useTasksStore } from '@/stores/tasks'
 import { useBoardStore } from '@/stores/board'
 import TaskColumn from '@/components/TaskColumn.vue'
 import TaskDetails from '@/components/TaskDetails.vue'
-import DecorativeBackground from '@/components/DecorativeBackground.vue'
+import PageLayout from '@/components/PageLayout.vue'
 import type { Task, TaskStatus } from '@/types'
 
 const authStore = useAuthStore()
@@ -120,41 +120,34 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="min-h-screen relative overflow-hidden bg-gradient-to-br from-gray-50 via-gray-100 to-gray-50 dark:from-gray-950 dark:via-gray-900 dark:to-gray-950">
-    <DecorativeBackground />
-    
-    <!-- Loading State -->
-    <div v-if="boardStore.loading" class="relative z-10 min-h-screen flex items-center justify-center">
-      <div class="text-center">
-        <div class="w-16 h-16 border-4 border-primary-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-        <p class="text-gray-600 dark:text-gray-400 font-medium">Loading your board...</p>
-      </div>
-    </div>
-
+  <PageLayout 
+    :loading="boardStore.loading"
+    loading-message="Loading your board..."
+  >
     <!-- Board Content -->
-    <div v-else class="relative min-h-screen pt-20">
+    <div class="relative min-h-screen pt-20">
       <!-- Main Content -->
-      <main class="max-w-[1800px] mx-auto px-6 pt-8 pb-8 overflow-y-hidden">
-        <div class="flex justify-center">
-          <div class="flex gap-6 pb-6 overflow-x-auto px-4">
+      <main class="max-w-[1800px] mx-auto h-[calc(100vh-5rem)] overflow-hidden">
+        <div class="flex h-full w-full">
+          <div class="flex gap-6 overflow-x-auto overflow-y-hidden px-4 h-full scrollbar-hide w-full max-w-full justify-around" >
           <!-- Task Columns -->
-          <TaskColumn
-            v-for="column in columnConfig"
-            :key="column.status"
-            v-if="boardStore.boardId"
-            :title="column.title"
-            :status="column.status"
-            :tasks="column.tasks"
-            :board-id="boardStore.boardId"
-            :color="column.color"
-            :active-users="presenceData.activeUsers"
-            :current-user-id="currentUserId"
-            @create-task="(title, description) => handleCreateTask(column.status, title, description)"
-            @delete-task="handleDeleteTask"
-            @task-click="handleTaskClick"
-            @task-moved="handleTaskMoved"
-            @editing-state-changed="handleEditingStateChanged"
-          />
+            <TaskColumn
+              v-for="column in columnConfig"
+              :key="column.status"
+              v-if="boardStore.boardId"
+              :title="column.title"
+              :status="column.status"
+              :tasks="column.tasks"
+              :board-id="boardStore.boardId"
+              :color="column.color"
+              :active-users="presenceData.activeUsers"
+              :current-user-id="currentUserId"
+              @create-task="(title, description) => handleCreateTask(column.status, title, description)"
+              @delete-task="handleDeleteTask"
+              @task-click="handleTaskClick"
+              @task-moved="handleTaskMoved"
+              @editing-state-changed="handleEditingStateChanged"
+            />
           </div>
         </div>
       </main>
@@ -171,6 +164,6 @@ onUnmounted(() => {
         @editing-state-changed="handleEditingStateChanged"
       />
     </div>
-  </div>
+  </PageLayout>
 </template>
 

@@ -1,0 +1,6 @@
+export { Particle, type ParticlePattern, type ParticleColor } from './Particle'
+export { vertexShaderSource, fragmentShaderSource } from './shaders'
+export { createShader, createProgram, initWebGL } from './webglUtils'
+export { DeltaTimeCalculator } from './deltaTimeCalculator'
+export { ParticleManager, colorPalette } from './particleManager'
+export { WebGLRenderer, type AnimationConfig } from './webglRenderer'

@@ -17,6 +17,29 @@ export const usePresenceStore = defineStore('presence', () => {
     eventData: Record<string, any>
   } | null = null
 
+  // Track presence events for deltaTime calculation
+  const presenceEvents = ref<number[]>([])
+  const maxEventHistory = 100 // Keep last 100 events for calculation
+
+  // Add presence event timestamp
+  const addPresenceEvent = () => {
+    const now = Date.now()
+    presenceEvents.value.push(now)
+    
+    // Keep only recent events and limit array size
+    const tenSecondsAgo = now - 10000
+    presenceEvents.value = presenceEvents.value
+      .filter(timestamp => timestamp > tenSecondsAgo)
+      .slice(-maxEventHistory)
+  }
+
+  // Get presence event count in specified time window
+  const getPresenceEventCount = (timeWindowMs: number = 10000): number => {
+    const now = Date.now()
+    const timeAgo = now - timeWindowMs
+    return presenceEvents.value.filter(timestamp => timestamp > timeAgo).length
+  }
+
   // Internal function - not exported
   const updatePresence = async (boardId: string, eventData: Record<string, any> = {}) => {
     if (!authStore.user) return
@@ -32,6 +55,7 @@ export const usePresenceStore = defineStore('presence', () => {
       const token = authStore.getToken()
       await wsAPI.request('presence:update', { boardId, eventData }, token)
       lastPresenceState = currentState
+      addPresenceEvent() // Track this presence event
     } catch (error) {
       console.error('Error updating presence:', error)
     }
@@ -140,5 +164,6 @@ export const usePresenceStore = defineStore('presence', () => {
     stopPresenceTracking,
     subscribeToNotifications,
     unsubscribeFromNotifications,
+    getPresenceEventCount
   }
 })

@@ -44,12 +44,12 @@ const formatDate = (date: string) => {
 
 <template>
   <div
-    class="glass-card p-4 transition-all duration-300 group hover:scale-[1.02] border-l-4 m-1 relative overflow-hidden"
+    class="bg-white/60 dark:bg-gray-900/60 backdrop-blur-2xl border border-white/30 dark:border-gray-700/40 rounded-2xl p-4 transition-all duration-300 group hover:scale-[1.02] border-l-4 m-1 relative overflow-hidden shadow-md"
     :class="{
-      'border-l-red-500': task.status === 'todo',
-      'border-l-yellow-500': task.status === 'in_progress',
-      'border-l-green-500': task.status === 'done',
-      'cursor-pointer hover:shadow-2xl': !isBeingEditedByOther,
+      'border-l-red-500 dark:border-l-red-500/40': task.status === 'todo',
+      'border-l-yellow-500 dark:border-l-yellow-500/40': task.status === 'in_progress',
+      'border-l-green-500 dark:border-l-green-500/40': task.status === 'done',
+      'cursor-pointer hover:shadow-lg': !isBeingEditedByOther,
       'cursor-not-allowed opacity-60': isBeingEditedByOther,
     }"
     @click="!isBeingEditedByOther && emit('click')"

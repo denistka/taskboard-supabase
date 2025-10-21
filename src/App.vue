@@ -4,6 +4,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
 import { wsAPI } from '@/lib/websocket'
 import AppHeader from '@/components/AppHeader.vue'
+import DecorativeBackground from '@/components/DecorativeBackground/index.vue'
 
 const authStore = useAuthStore()
 useThemeStore()
@@ -23,7 +24,8 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div id="app" class="min-h-screen overflow-x-hidden">
+  <div id="app" class="min-h-screen overflow-x-hidden relative">
+    <DecorativeBackground />
     <AppHeader />
     <RouterView />
   </div>
