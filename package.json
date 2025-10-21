@@ -10,8 +10,11 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.75.1",
+    "@types/lodash": "^4.17.20",
     "@vueuse/core": "^13.9.0",
+    "lodash": "^4.17.21",
     "pinia": "^3.0.3",
+    "socket.io-client": "^4.7.5",
     "sortablejs": "^1.15.6",
     "vue": "^3.5.22",
     "vue-router": "^4.5.1"
@@ -28,4 +31,3 @@
     "vue-tsc": "^3.1.0"
   }
 }
-

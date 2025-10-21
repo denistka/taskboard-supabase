@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
-import type { Task, TaskStatus } from '@/types'
+import { ref, computed, watchEffect } from 'vue'
+import type { Task, TaskStatus, UserPresence } from '@/types'
 import TaskCard from './TaskCard.vue'
 import Sortable from 'sortablejs'
 import { onMounted } from 'vue'
-import { usePresenceStore } from '@/stores/presence'
+import { PlusIcon, CloseIcon, DocumentIcon } from '@/components/icons'
 
 interface Props {
   title: string
@@ -12,16 +12,18 @@ interface Props {
   tasks: Task[]
   color: string
   boardId: string
+  activeUsers: UserPresence[]
+  currentUserId?: string
 }
 
 const props = defineProps<Props>()
-const presenceStore = usePresenceStore()
 
 const emit = defineEmits<{
   createTask: [title: string, description: string]
   deleteTask: [taskId: string]
   taskClick: [task: Task]
   taskMoved: [taskId: string, newStatus: TaskStatus, newPosition: number]
+  editingStateChanged: [isEditing: boolean, taskId?: string, fields?: string[]]
 }>()
 
 const isCreating = ref(false)
@@ -31,25 +33,34 @@ const columnRef = ref<HTMLElement | null>(null)
 
 const taskCount = computed(() => props.tasks.length)
 
+// Computed property to determine if we're actively editing
+const isActivelyEditing = computed(() => 
+  isCreating.value && (newTitle.value.trim() || newDescription.value.trim())
+)
+
 const handleCreate = () => {
   if (newTitle.value.trim()) {
     emit('createTask', newTitle.value, newDescription.value)
-    newTitle.value = ''
-    newDescription.value = ''
-    isCreating.value = false
-    presenceStore.setEditingState(props.boardId, false)
+    resetForm()
   }
 }
 
-// Track editing state
-watch(isCreating, (editing) => {
-  presenceStore.setEditingState(props.boardId, editing)
-})
+const resetForm = () => {
+  newTitle.value = ''
+  newDescription.value = ''
+  isCreating.value = false
+}
 
-watch([newTitle, newDescription], () => {
-  if (isCreating.value) {
-    presenceStore.setEditingState(props.boardId, true)
+const toggleCreating = () => {
+  isCreating.value = !isCreating.value
+  if (!isCreating.value) {
+    resetForm()
   }
+}
+
+// Single watchEffect to handle all editing state changes
+watchEffect(() => {
+  emit('editingStateChanged', !!isActivelyEditing.value)
 })
 
 onMounted(() => {
@@ -61,6 +72,12 @@ onMounted(() => {
         animation: 150,
         ghostClass: 'dragging',
         dragClass: 'dragging',
+        forceFallback: true,
+        fallbackClass: 'dragging',
+        onStart: (evt) => {
+          // Ensure drag element has highest z-index
+          evt.item.style.zIndex = '9999'
+        },
         onEnd: (evt) => {
           const taskId = evt.item.dataset.taskId
           const newStatus = evt.to.dataset.status as TaskStatus
@@ -77,8 +94,8 @@ onMounted(() => {
 </script>
 
 <template>
-  <div ref="columnRef" class="flex-1 min-w-[320px] max-w-[400px] flex flex-col">
-    <div class="card p-4 mb-4 border-t-4" :class="`border-t-${color}-500`">
+  <div ref="columnRef" class="flex-1 min-w-[320px] max-w-[400px] flex flex-col relative z-30">
+    <div class="glass-card p-4 mb-4 border-t-4 relative z-10" :class="`border-t-${color}-500`">
       <div class="flex items-center justify-between mb-2">
         <div class="flex items-center gap-3">
           <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">
@@ -89,22 +106,18 @@ onMounted(() => {
           </span>
         </div>
         <button
-          @click="isCreating = !isCreating"
-          class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          @click="toggleCreating"
+          class="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors relative z-20"
           :title="isCreating ? 'Cancel' : 'Add task'"
         >
-          <svg v-if="!isCreating" class="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-          </svg>
-          <svg v-else class="w-5 h-5 text-gray-600 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
+          <PlusIcon v-if="!isCreating" class="w-5 h-5 text-gray-600 dark:text-gray-400" />
+          <CloseIcon v-else class="w-5 h-5 text-gray-600 dark:text-gray-400" />
         </button>
       </div>
     </div>
 
     <!-- Create Task Form -->
-    <div v-if="isCreating" class="card p-4 mb-4 space-y-3 bg-gray-50 dark:bg-gray-800/50 animate-slide-in">
+    <div v-if="isCreating" class="glass-subtle p-4 mb-4 space-y-3 animate-slide-in relative z-40">
       <input
         v-model="newTitle"
         type="text"
@@ -128,7 +141,7 @@ onMounted(() => {
           Add Task
         </button>
         <button
-          @click="isCreating = false; newTitle = ''; newDescription = ''"
+          @click="resetForm"
           class="btn-secondary text-sm px-4 py-2"
         >
           Cancel
@@ -138,17 +151,19 @@ onMounted(() => {
 
     <!-- Tasks List -->
     <div 
-      class="tasks-container flex-1 space-y-3 overflow-visible p-2"
+      class="tasks-container flex-1 space-y-3 overflow-visible p-2 relative z-10"
       :data-status="status"
     >
       <div
         v-for="task in tasks"
         :key="task.id"
         :data-task-id="task.id"
-        class="cursor-move"
+        class="cursor-move relative z-10"
       >
         <TaskCard
           :task="task"
+          :active-users="activeUsers"
+          :current-user-id="currentUserId"
           @click="emit('taskClick', task)"
           @delete="emit('deleteTask', task.id)"
         />
@@ -157,9 +172,7 @@ onMounted(() => {
         v-if="tasks.length === 0 && !isCreating"
         class="text-center py-12 text-gray-400 dark:text-gray-600"
       >
-        <svg class="w-16 h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-        </svg>
+        <DocumentIcon class="w-16 h-16 mx-auto mb-4 opacity-50" />
         <p class="text-sm font-medium">No tasks yet</p>
         <p class="text-xs mt-1">Click + to add a task</p>
       </div>

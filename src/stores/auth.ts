@@ -1,39 +1,39 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { supabase } from '@/lib/supabase'
 import type { User } from '@supabase/supabase-js'
+import type { AuthResponse, AuthSignInPayload, AuthSignUpPayload } from '@/types'
+import { wsAPI } from '@/lib/websocket'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
   const loading = ref(true)
 
   const isAuthenticated = computed(() => !!user.value)
+  
+  // Helper to get current token
+  const getToken = (): string | undefined => {
+    return localStorage.getItem('auth_token') || undefined
+  }
 
   const initialize = async () => {
     loading.value = true
     try {
-      const { data: { user: currentUser } } = await supabase.auth.getUser()
-      user.value = currentUser
-
-      supabase.auth.onAuthStateChange(async (event, session) => {
-        user.value = session?.user || null
-        
-        // Handle logout by cleaning up presence
-        if (event === 'SIGNED_OUT') {
-          const { usePresenceStore } = await import('./presence')
-          const { useBoardStore } = await import('./board')
-          const presenceStore = usePresenceStore()
-          const boardStore = useBoardStore()
-          
-          // Remove user presence from database
-          if (boardStore.boardId) {
-            await presenceStore.removeUserPresence(boardStore.boardId)
-          }
-          
-          // Stop presence tracking
-          presenceStore.stopPresenceTracking()
+      // WebSocket store will handle connection with token from localStorage
+      // Just verify the session if we have a token
+      const token = localStorage.getItem('auth_token')
+      
+      if (token && wsAPI.isConnected) {
+        try {
+          // Verify session with server
+          const result = await wsAPI.request<{ user: User }>('auth:verify', {}, token)
+          user.value = result.user
+        } catch (error) {
+          console.error('Session verification failed:', error)
+          // Clear invalid token
+          localStorage.removeItem('auth_token')
+          user.value = null
         }
-      })
+      }
     } catch (error) {
       console.error('Auth initialization error:', error)
     } finally {
@@ -42,57 +42,51 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const signUp = async (email: string, password: string, fullName?: string) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: fullName,
-        },
-      },
-    })
-    if (error) throw error
-    return data
+    const payload: AuthSignUpPayload = { email, password, fullName }
+    const result = await wsAPI.request<AuthResponse>('auth:signup', payload)
+    
+    user.value = result.user
+    localStorage.setItem('auth_token', result.token)
+    
+    return result
   }
 
   const signIn = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
-    if (error) throw error
-    user.value = data.user
-    return data
+    // WebSocket is already connected by initialize()
+    const payload: AuthSignInPayload = { email, password }
+    const result = await wsAPI.request<AuthResponse>('auth:signin', payload)
+    
+    user.value = result.user
+    localStorage.setItem('auth_token', result.token)
+    
+    return result
   }
 
   const signOut = async () => {
-    // Stop presence tracking and remove presence record before signing out
-    const { usePresenceStore } = await import('./presence')
-    const { useBoardStore } = await import('./board')
-    const presenceStore = usePresenceStore()
-    const boardStore = useBoardStore()
-    
-    // Remove user presence from database
-    if (boardStore.boardId) {
-      await presenceStore.removeUserPresence(boardStore.boardId)
+    try {
+      // Notify server about logout
+      if (wsAPI.isConnected) {
+        const token = getToken()
+        await wsAPI.request('auth:signout', {}, token)
+      }
+    } catch (error) {
+      console.error('Error during signout:', error)
+    } finally {
+      // Clean up local state
+      user.value = null
+      localStorage.removeItem('auth_token')
+      // Note: Don't disconnect - keep connection for next login
     }
-    
-    // Stop presence tracking
-    presenceStore.stopPresenceTracking()
-    
-    const { error } = await supabase.auth.signOut()
-    if (error) throw error
-    user.value = null
   }
 
   return {
     user,
     loading,
     isAuthenticated,
+    getToken,
     initialize,
     signUp,
     signIn,
     signOut,
   }
 })
-

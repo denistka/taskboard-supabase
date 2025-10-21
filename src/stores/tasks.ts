@@ -1,34 +1,80 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { supabase } from '@/lib/supabase'
-import type { Task, TaskStatus } from '@/types'
+import type { 
+  Task, 
+  TaskStatus,
+  TaskCreatePayload,
+  TaskUpdatePayload,
+  TaskMovePayload,
+  TaskResponse,
+  TasksResponse
+} from '@/types'
 import { useAuthStore } from './auth'
-
-// Define proper types for Supabase operations
-interface TaskInsert {
-  board_id: string
-  title: string
-  description?: string | null
-  status?: 'todo' | 'in_progress' | 'done'
-  created_by: string
-  position?: number
-  version?: number
-}
-
-interface TaskUpdate {
-  title?: string
-  description?: string | null
-  status?: 'todo' | 'in_progress' | 'done'
-  assigned_to?: string | null
-  position?: number
-  version?: number
-}
+import { usePresenceStore } from './presence'
+import { wsAPI } from '@/lib/websocket'
 
 export const useTasksStore = defineStore('tasks', () => {
   const tasks = ref<Task[]>([])
   const loading = ref(false)
   const selectedTask = ref<Task | null>(null)
   const authStore = useAuthStore()
+  const presenceStore = usePresenceStore()
+
+  // Helper function to track presence actions with auto-clear
+  const trackAction = async (boardId: string, action: string, taskTitle?: string) => {
+    await presenceStore.setEventData(boardId, {
+      currentAction: action,
+      actionTaskTitle: taskTitle,
+      actionStartTime: Date.now()
+    })
+    
+    // Auto-clear action after 5 seconds
+    setTimeout(() => {
+      presenceStore.clearEventData(boardId, ['currentAction', 'actionTaskTitle', 'actionStartTime'])
+    }, 5000)
+  }
+
+  // Presence tracking for editing states
+  const trackEditingState = async (boardId: string, isEditing: boolean, taskId?: string, fields?: string[]) => {
+    if (isEditing) {
+      await presenceStore.setEventDataDebounced(boardId, {
+        isEditing: true,
+        editingTaskId: taskId,
+        editingFields: fields,
+        editingStartTime: Date.now()
+      })
+    } else {
+      await presenceStore.clearEventData(boardId, ['isEditing', 'editingTaskId', 'editingFields', 'editingStartTime'])
+    }
+  }
+
+  // Get presence data for components
+  const getPresenceData = () => {
+    return {
+      activeUsers: presenceStore.activeUsers,
+      isUserEditing: (userId: string, taskId?: string) => {
+        return presenceStore.activeUsers.some(user => 
+          user.user_id === userId && 
+          user.event_data?.isEditing && 
+          (!taskId || user.event_data?.editingTaskId === taskId)
+        )
+      },
+      getUsersEditingTask: (taskId: string, excludeUserId?: string) => {
+        return presenceStore.activeUsers.filter(user => 
+          (user.event_data?.editingTaskId === taskId || 
+           (user.event_data?.currentAction && user.event_data?.actionTaskTitle)) && 
+          (!excludeUserId || user.user_id !== excludeUserId)
+        )
+      },
+      getUsersEditingField: (taskId: string, field: string, excludeUserId?: string) => {
+        return presenceStore.activeUsers.filter(user => 
+          user.event_data?.editingTaskId === taskId &&
+          user.event_data?.editingFields?.includes(field) &&
+          (!excludeUserId || user.user_id !== excludeUserId)
+        )
+      }
+    }
+  }
 
   // Memoized computed properties for better performance
   const todoTasks = computed(() => {
@@ -49,24 +95,12 @@ export const useTasksStore = defineStore('tasks', () => {
   const fetchTasks = async (boardId: string) => {
     loading.value = true
     try {
-      const { data, error } = await supabase
-        .from('tasks')
-        .select(`
-          *,
-          profiles:created_by (
-            id,
-            email,
-            full_name,
-            avatar_url
-          )
-        `)
-        .eq('board_id', boardId)
-        .order('position', { ascending: true })
-
-      if (error) throw error
-      tasks.value = data as Task[]
+      const token = authStore.getToken()
+      const result = await wsAPI.request<TasksResponse>('task:fetch', { boardId }, token)
+      tasks.value = result.tasks
     } catch (error) {
       console.error('Error fetching tasks:', error)
+      throw error
     } finally {
       loading.value = false
     }
@@ -75,41 +109,34 @@ export const useTasksStore = defineStore('tasks', () => {
   const createTask = async (boardId: string, title: string, description: string, status: TaskStatus = 'todo') => {
     if (!authStore.user) return
 
-    const newTask: TaskInsert = {
+    // Track presence action
+    await trackAction(boardId, 'creating new task')
+
+    const payload: TaskCreatePayload = {
       board_id: boardId,
       title,
       description,
       status,
-      created_by: authStore.user.id,
-      position: tasks.value.filter(t => t.status === status).length,
-      version: 1,
     }
 
-    const { data, error } = await (supabase as any)
-      .from('tasks')
-      .insert(newTask)
-      .select(`
-        *,
-        profiles:created_by (
-          id,
-          email,
-          full_name,
-          avatar_url
-        )
-      `)
-      .single()
-
-    if (error) {
+    try {
+      const token = authStore.getToken()
+      const result = await wsAPI.request<TaskResponse>('task:create', payload, token)
+      
+      // Add task locally (server will broadcast to others)
+      if (result.task) {
+        tasks.value.push(result.task)
+        
+        // Auto-select newly created task
+        selectedTask.value = result.task
+      }
+    } catch (error) {
       console.error('Error creating task:', error)
       throw error
     }
-
-    if (data) {
-      tasks.value.push(data as Task)
-    }
   }
 
-  const updateTask = async (taskId: string, updates: TaskUpdate) => {
+  const updateTask = async (taskId: string, updates: Partial<Task>) => {
     // Get current task to check version
     const taskIndex = tasks.value.findIndex(t => t.id === taskId)
     const currentTask = taskIndex !== -1 ? tasks.value[taskIndex] : null
@@ -117,6 +144,9 @@ export const useTasksStore = defineStore('tasks', () => {
     if (!currentTask) {
       throw new Error('Task not found')
     }
+
+    // Track presence action
+    await trackAction(currentTask.board_id, 'editing task', currentTask.title)
 
     // Optimistic update for better UX
     const originalTask = { ...currentTask }
@@ -130,35 +160,28 @@ export const useTasksStore = defineStore('tasks', () => {
     }
 
     try {
-      // Use a more sophisticated conflict resolution approach
-      // Instead of blocking on version conflicts, we'll merge changes intelligently
-      const updateWithVersion = { 
-        ...updates, 
-        version: currentTask.version + 1,
-        updated_at: new Date().toISOString()
+      const payload: TaskUpdatePayload = {
+        taskId,
+        boardId: currentTask.board_id,
+        updates: {
+          title: updates.title,
+          description: updates.description,
+          status: updates.status,
+          assigned_to: updates.assigned_to,
+          position: updates.position,
+        },
+        currentVersion: currentTask.version,
       }
 
-      const { data, error } = await (supabase as any)
-        .from('tasks')
-        .update(updateWithVersion)
-        .eq('id', taskId)
-        .select()
+      const token = authStore.getToken()
+      const result = await wsAPI.request<TaskResponse>('task:update', payload, token)
 
-      if (error) {
-        // Revert optimistic update on error
-        if (originalTask && taskIndex !== -1) {
-          tasks.value[taskIndex] = originalTask
+      // Update successful - update local task with server response
+      if (result.task && taskIndex !== -1) {
+        tasks.value[taskIndex] = result.task
+        if (selectedTask.value?.id === taskId) {
+          selectedTask.value = result.task
         }
-        if (selectedTask.value?.id === taskId && originalTask) {
-          selectedTask.value = originalTask
-        }
-        console.error('Error updating task:', error)
-        throw error
-      }
-
-      // Update successful - update local task with new version
-      if (data && data[0] && taskIndex !== -1) {
-        tasks.value[taskIndex] = { ...tasks.value[taskIndex], ...data[0] }
       }
 
     } catch (error) {
@@ -169,104 +192,39 @@ export const useTasksStore = defineStore('tasks', () => {
       if (selectedTask.value?.id === taskId && originalTask) {
         selectedTask.value = originalTask
       }
+      console.error('Error updating task:', error)
       throw error
     }
   }
 
   const deleteTask = async (taskId: string) => {
-    const { error } = await supabase
-      .from('tasks')
-      .delete()
-      .eq('id', taskId)
+    const task = tasks.value.find(t => t.id === taskId)
+    if (!task) return
 
-    if (error) {
+    // Track presence action
+    await trackAction(task.board_id, 'deleting task', task.title)
+
+    try {
+      const token = authStore.getToken()
+      await wsAPI.request('task:delete', { taskId }, token)
+      
+      // Remove from local state
+      tasks.value = tasks.value.filter(t => t.id !== taskId)
+      if (selectedTask.value?.id === taskId) {
+        selectedTask.value = null
+      }
+    } catch (error) {
       console.error('Error deleting task:', error)
       throw error
     }
-
-    tasks.value = tasks.value.filter(t => t.id !== taskId)
-    if (selectedTask.value?.id === taskId) {
-      selectedTask.value = null
-    }
-  }
-
-  const subscribeToTasks = (boardId: string) => {
-    const channel = supabase
-      .channel('tasks-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'tasks',
-          filter: `board_id=eq.${boardId}`,
-        },
-        async (payload) => {
-          if (payload.eventType === 'INSERT') {
-            const { data } = await supabase
-              .from('tasks')
-              .select(`
-                *,
-                profiles:created_by (
-                  id,
-                  email,
-                  full_name,
-                  avatar_url
-                )
-              `)
-              .eq('id', payload.new.id)
-              .single()
-
-            if (data && !tasks.value.find(t => t.id === (data as any).id)) {
-              tasks.value.push(data as Task)
-              
-              // Auto-select newly created task if it's created by current user
-              if (authStore.user && (data as any).created_by === authStore.user.id) {
-                selectedTask.value = data as Task
-              }
-            }
-          } else if (payload.eventType === 'UPDATE') {
-            const taskIndex = tasks.value.findIndex(t => t.id === payload.new.id)
-            if (taskIndex !== -1) {
-              // Only update if there are actual changes to avoid unnecessary re-renders
-              const currentTask = tasks.value[taskIndex]
-              const hasChanges = Object.keys(payload.new).some(key => 
-                currentTask[key as keyof Task] !== payload.new[key]
-              )
-              
-              if (hasChanges) {
-                tasks.value[taskIndex] = { ...currentTask, ...payload.new as Task }
-                
-                // Update selectedTask if it's the same task
-                if (selectedTask.value?.id === payload.new.id) {
-                  selectedTask.value = { ...currentTask, ...payload.new as Task }
-                }
-              }
-            }
-          } else if (payload.eventType === 'DELETE') {
-            tasks.value = tasks.value.filter(t => t.id !== payload.old.id)
-            
-            // Clear selectedTask if it was deleted
-            if (selectedTask.value?.id === payload.old.id) {
-              selectedTask.value = null
-            }
-          }
-        }
-      )
-      .subscribe()
-
-    return () => {
-      channel.unsubscribe()
-    }
-  }
-
-  const selectTask = (task: Task | null) => {
-    selectedTask.value = task
   }
 
   const moveTask = async (taskId: string, newStatus: TaskStatus, newPosition: number) => {
     const task = tasks.value.find(t => t.id === taskId)
     if (!task) return
+
+    // Track presence action
+    await trackAction(task.board_id, 'moving task', task.title)
 
     const oldStatus = task.status
     const oldPosition = task.position
@@ -301,27 +259,92 @@ export const useTasksStore = defineStore('tasks', () => {
     }
 
     try {
-      // Update the moved task
-      await updateTask(taskId, { status: newStatus, position: newPosition })
-      
-      // Update all affected tasks in batch
-      const tasksToUpdate = tasks.value.filter(t => 
-        t.status === newStatus || (t.status === oldStatus && t.id !== taskId)
-      )
-      
-      for (const taskToUpdate of tasksToUpdate) {
-        await (supabase as any)
-          .from('tasks')
-          .update({ position: taskToUpdate.position })
-          .eq('id', taskToUpdate.id)
+      // Get all affected tasks
+      const affectedTasks = tasks.value
+        .filter(t => t.status === newStatus || t.status === oldStatus)
+        .map(t => ({
+          id: t.id,
+          status: t.status,
+          position: t.position,
+          version: t.version,
+        }))
+
+      const payload: TaskMovePayload = {
+        boardId: task.board_id,
+        tasks: affectedTasks,
       }
+
+      const token = authStore.getToken()
+      await wsAPI.request('task:move', payload, token)
+      
     } catch (error) {
       // Revert optimistic updates on error
       task.status = oldStatus
       task.position = oldPosition
       await fetchTasks(task.board_id) // Refresh from server
+      console.error('Error moving task:', error)
       throw error
     }
+  }
+
+  const subscribeToNotifications = () => {
+    // Subscribe to task creation events from other users
+    wsAPI.on('task:created', (data: { task: Task; boardId: string }) => {
+      // Check if task already exists (to avoid duplicates from our own actions)
+      if (!tasks.value.find(t => t.id === data.task.id)) {
+        tasks.value.push(data.task)
+      }
+    })
+
+    // Subscribe to task update events from other users
+    wsAPI.on('task:updated', (data: { task: Task; boardId: string }) => {
+      const taskIndex = tasks.value.findIndex(t => t.id === data.task.id)
+      if (taskIndex !== -1) {
+        // Only update if the version is newer
+        if (data.task.version > tasks.value[taskIndex].version) {
+          tasks.value[taskIndex] = data.task
+          
+          // Update selectedTask if it's the same task
+          if (selectedTask.value?.id === data.task.id) {
+            selectedTask.value = data.task
+          }
+        }
+      }
+    })
+
+    // Subscribe to task deletion events from other users
+    wsAPI.on('task:deleted', (data: { taskId: string; boardId: string }) => {
+      tasks.value = tasks.value.filter(t => t.id !== data.taskId)
+      
+      // Clear selectedTask if it was deleted
+      if (selectedTask.value?.id === data.taskId) {
+        selectedTask.value = null
+      }
+    })
+
+    // Subscribe to task move events from other users
+    wsAPI.on('tasks:moved', (data: { tasks: Array<{ id: string; status: TaskStatus; position: number; version: number }>; boardId: string }) => {
+      data.tasks.forEach(updatedTask => {
+        const taskIndex = tasks.value.findIndex(t => t.id === updatedTask.id)
+        if (taskIndex !== -1) {
+          tasks.value[taskIndex] = {
+            ...tasks.value[taskIndex],
+            ...updatedTask,
+          }
+        }
+      })
+    })
+  }
+
+  const unsubscribeFromNotifications = () => {
+    wsAPI.off('task:created')
+    wsAPI.off('task:updated')
+    wsAPI.off('task:deleted')
+    wsAPI.off('tasks:moved')
+  }
+
+  const selectTask = (task: Task | null) => {
+    selectedTask.value = task
   }
 
   return {
@@ -336,7 +359,11 @@ export const useTasksStore = defineStore('tasks', () => {
     updateTask,
     deleteTask,
     moveTask,
-    subscribeToTasks,
+    subscribeToNotifications,
+    unsubscribeFromNotifications,
     selectTask,
+    // Presence methods
+    trackEditingState,
+    getPresenceData,
   }
 })

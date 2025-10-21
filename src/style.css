@@ -40,7 +40,15 @@
 
 @layer utilities {
   .glass-effect {
-    @apply bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg;
+    @apply bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl border border-white/20 dark:border-gray-700/30 shadow-xl rounded-xl;
+  }
+
+  .glass-card {
+    @apply bg-white/60 dark:bg-gray-900/60 backdrop-blur-2xl border border-white/30 dark:border-gray-700/40 shadow-2xl rounded-2xl;
+  }
+
+  .glass-subtle {
+    @apply bg-white/50 dark:bg-gray-900/50 backdrop-blur-lg border border-white/10 dark:border-gray-700/20 rounded-lg;
   }
 
   .text-gradient {
@@ -63,10 +71,11 @@
 
 /* Drag and drop styles */
 .dragging {
-  @apply opacity-50 cursor-grabbing;
+  @apply opacity-50 cursor-grabbing relative;
 }
 
 .drag-over {
   @apply ring-2 ring-primary-500 ring-opacity-50;
 }
+
 

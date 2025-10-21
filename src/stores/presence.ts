@@ -1,192 +1,144 @@
 import { defineStore } from 'pinia'
 import { ref, onUnmounted } from 'vue'
-import { supabase } from '@/lib/supabase'
-import type { UserPresence } from '@/types'
+import { debounce } from 'lodash'
+import type { UserPresence, PresenceResponse } from '@/types'
 import { useAuthStore } from './auth'
-
-// Define proper types for Supabase operations
-interface UserPresenceInsert {
-  user_id: string
-  board_id: string
-  last_seen?: string
-  is_editing?: boolean
-  editing_task_id?: string | null
-  editing_fields?: string[] | null
-}
-
-// Debounce utility for presence updates
-const debounce = (func: Function, wait: number) => {
-  let timeout: ReturnType<typeof setTimeout>
-  return function executedFunction(...args: any[]) {
-    const later = () => {
-      clearTimeout(timeout)
-      func(...args)
-    }
-    clearTimeout(timeout)
-    timeout = setTimeout(later, wait)
-  }
-}
+import { wsAPI } from '@/lib/websocket'
 
 export const usePresenceStore = defineStore('presence', () => {
   const activeUsers = ref<UserPresence[]>([])
+  const authStore = useAuthStore()
   let presenceInterval: ReturnType<typeof setInterval> | null = null
-  let presenceChannel: any = null
+  let currentBoardId: string | null = null
+  
+  // Track last presence state to avoid redundant updates
+  let lastPresenceState: {
+    boardId: string
+    eventData: Record<string, any>
+  } | null = null
 
-  const updatePresence = async (boardId: string, isEditing = false, editingTaskId: string | null = null, editingFields: string[] = []) => {
-    const authStore = useAuthStore()
+  // Internal function - not exported
+  const updatePresence = async (boardId: string, eventData: Record<string, any> = {}) => {
     if (!authStore.user) return
 
+    const currentState = { boardId, eventData }
+    if (lastPresenceState && 
+        lastPresenceState.boardId === currentState.boardId &&
+        JSON.stringify(lastPresenceState.eventData) === JSON.stringify(currentState.eventData)) {
+      return
+    }
+
     try {
-      const presenceData: UserPresenceInsert = {
-        user_id: authStore.user.id,
-        board_id: boardId,
-        last_seen: new Date().toISOString(),
-        is_editing: isEditing,
-        editing_task_id: editingTaskId,
-        editing_fields: editingFields.length > 0 ? editingFields : null,
-      }
-
-      const { error } = await (supabase as any)
-        .from('user_presence')
-        .upsert(presenceData, {
-          onConflict: 'user_id,board_id'
-        })
-
-      if (error) {
-        console.error('Error updating presence:', error)
-      }
+      const token = authStore.getToken()
+      await wsAPI.request('presence:update', { boardId, eventData }, token)
+      lastPresenceState = currentState
     } catch (error) {
       console.error('Error updating presence:', error)
     }
   }
   
-  // Debounced editing state updates to prevent excessive API calls
-  const debouncedUpdatePresence = debounce(updatePresence, 500)
+  // Debounced updates for frequent changes (like editing)
+  const debouncedUpdatePresence = debounce(updatePresence, 300)
   
-  const setEditingState = async (boardId: string, isEditing: boolean, editingTaskId: string | null = null, editingFields: string[] = []) => {
-    await debouncedUpdatePresence(boardId, isEditing, editingTaskId, editingFields)
-    // Only fetch users when stopping editing to reduce API calls
-    if (!isEditing) {
-      await fetchActiveUsers(boardId)
-    }
+  // Universal functions for any event data
+  const setEventData = async (boardId: string, eventData: Record<string, any>) => {
+    await updatePresence(boardId, eventData)
+  }
+
+  const setEventDataDebounced = async (boardId: string, eventData: Record<string, any>) => {
+    await debouncedUpdatePresence(boardId, eventData)
+  }
+
+  const clearEventData = async (boardId: string, keys: string[]) => {
+    const clearData = keys.reduce((acc, key) => {
+      acc[key] = null
+      return acc
+    }, {} as Record<string, any>)
+    await updatePresence(boardId, clearData)
   }
 
   const fetchActiveUsers = async (boardId: string) => {
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
-
-    const { data, error } = await supabase
-      .from('user_presence')
-      .select(`
-        *,
-        profile:user_id (
-          id,
-          email,
-          full_name,
-          avatar_url
-        )
-      `)
-      .eq('board_id', boardId)
-      .gte('last_seen', fiveMinutesAgo)
-
-    if (error) {
+    try {
+      const token = authStore.getToken()
+      const result = await wsAPI.request<PresenceResponse>('presence:fetch', { boardId }, token)
+      activeUsers.value = result.users
+    } catch (error) {
       console.error('Error fetching presence:', error)
-      return
     }
-
-    activeUsers.value = (data as UserPresence[]).map(item => ({
-      ...item,
-      profile: item.profile
-    }))
   }
 
   const startPresenceTracking = async (boardId: string) => {
-    const authStore = useAuthStore()
     if (!authStore.user) return
-
+    currentBoardId = boardId
     await updatePresence(boardId)
     await fetchActiveUsers(boardId)
-
-    presenceInterval = setInterval(async () => {
-      await updatePresence(boardId)
-      await fetchActiveUsers(boardId)
-    }, 10000) // Reduced to 10 seconds for more responsive updates
-
-    presenceChannel = supabase
-      .channel(`user-presence-${boardId}`, {
-        config: {
-          broadcast: { self: false },
-          presence: { key: `user-${authStore.user?.id}` }
-        }
-      })
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'user_presence',
-          filter: `board_id=eq.${boardId}`,
-        },
-        () => {
-          fetchActiveUsers(boardId)
-        }
-      )
-      .subscribe((status) => {
-        if (status === 'CHANNEL_ERROR') {
-          console.error('Error subscribing to presence channel')
-        } else if (status === 'TIMED_OUT') {
-          console.error('Presence channel subscription timed out')
-        }
-      })
-
+    presenceInterval = setInterval(() => updatePresence(boardId), 10000)
   }
 
-  const stopPresenceTracking = () => {
+  const stopPresenceTracking = async () => {
     if (presenceInterval) {
       clearInterval(presenceInterval)
       presenceInterval = null
     }
-    if (presenceChannel) {
-      presenceChannel.unsubscribe()
-      presenceChannel = null
-    }
-  }
-
-  const removeUserPresence = async (boardId: string) => {
-    const authStore = useAuthStore()
-    if (!authStore.user) return
-
-    try {
-      const { error } = await supabase
-        .from('user_presence')
-        .delete()
-        .eq('user_id', authStore.user.id)
-        .eq('board_id', boardId)
-
-      if (error) {
+    
+    if (currentBoardId) {
+      // Inline removeUserPresence logic
+      try {
+        const token = authStore.getToken()
+        await wsAPI.request('presence:remove', { boardId: currentBoardId }, token)
+      } catch (error) {
         console.error('Error removing user presence:', error)
       }
-    } catch (error) {
-      console.error('Error removing user presence:', error)
     }
+    
+    currentBoardId = null
+    lastPresenceState = null
+  }
+
+  const subscribeToNotifications = () => {
+    wsAPI.on('presence:updated', (data: { users: UserPresence[]; boardId: string }) => {
+      if (data.boardId === currentBoardId) {
+        activeUsers.value = data.users
+      }
+    })
+
+    wsAPI.on('user:joined', (data: { userId: string; boardId: string }) => {
+      if (data.boardId === currentBoardId) {
+        fetchActiveUsers(data.boardId)
+      }
+    })
+
+    // Combined user left events
+    const handleUserLeft = (data: { userId: string; boardId: string }) => {
+      if (data.boardId === currentBoardId) {
+        activeUsers.value = activeUsers.value.filter(u => u.user_id !== data.userId)
+      }
+    }
+    
+    wsAPI.on('user:left', handleUserLeft)
+    wsAPI.on('presence:user_left', handleUserLeft)
+  }
+
+  const unsubscribeFromNotifications = () => {
+    wsAPI.off('presence:updated')
+    wsAPI.off('user:joined')
+    wsAPI.off('user:left')
+    wsAPI.off('presence:user_left')
   }
 
   onUnmounted(() => {
     stopPresenceTracking()
   })
 
-  const forceRefreshPresence = async (boardId: string) => {
-    await fetchActiveUsers(boardId)
-  }
-
-
   return {
     activeUsers,
-    updatePresence,
+    setEventData,
+    setEventDataDebounced,
+    clearEventData,
     fetchActiveUsers,
     startPresenceTracking,
     stopPresenceTracking,
-    setEditingState,
-    removeUserPresence,
-    forceRefreshPresence,
+    subscribeToNotifications,
+    unsubscribeFromNotifications,
   }
 })

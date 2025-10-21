@@ -1,10 +1,10 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { supabase } from '@/lib/supabase'
 import { useAuthStore } from './auth'
 import { useTasksStore } from './tasks'
 import { usePresenceStore } from './presence'
-import type { Board } from '@/types'
+import { wsAPI } from '@/lib/websocket'
+import type { Board, BoardResponse } from '@/types'
 
 export const useBoardStore = defineStore('board', () => {
   const boardId = ref<string | null>(null)
@@ -13,8 +13,6 @@ export const useBoardStore = defineStore('board', () => {
   const authStore = useAuthStore()
   const tasksStore = useTasksStore()
   const presenceStore = usePresenceStore()
-
-  let unsubscribe: (() => void) | null = null
 
   const initializeBoard = async () => {
     loading.value = true
@@ -26,40 +24,25 @@ export const useBoardStore = defineStore('board', () => {
         return
       }
 
-      // Get or create a default board
-      const { data: existingBoard, error: fetchError } = await supabase
-        .from('boards')
-        .select('id')
-        .limit(1)
-        .maybeSingle()
-
-      if (fetchError) throw fetchError
-
-      if (existingBoard) {
-        boardId.value = (existingBoard as { id: string }).id
-      } else {
-        const { data: newBoard, error: insertError } = await supabase
-          .from('boards')
-          .insert({
-            name: 'My Task Board',
-            description: 'Collaborative task planning board',
-            created_by: authStore.user.id,
-          } as any)
-          .select('id')
-          .single()
-
-        if (insertError) throw insertError
-        if (newBoard) {
-          boardId.value = (newBoard as { id: string }).id
-        }
-      }
-
-      if (boardId.value) {
+      // Get or create a default board through WebSocket
+      const token = authStore.getToken()
+      const result = await wsAPI.request<BoardResponse>('board:get_or_create', {}, token)
+      
+      if (result.board) {
+        boardId.value = result.board.id
+        
+        // Join the board room on WebSocket
+        await wsAPI.request('board:join', { boardId: result.board.id }, token)
+        
+        // Initialize board data
         await Promise.all([
-          tasksStore.fetchTasks(boardId.value),
-          presenceStore.startPresenceTracking(boardId.value)
+          tasksStore.fetchTasks(result.board.id),
+          presenceStore.startPresenceTracking(result.board.id)
         ])
-        unsubscribe = tasksStore.subscribeToTasks(boardId.value)
+        
+        // Subscribe to real-time notifications
+        tasksStore.subscribeToNotifications()
+        presenceStore.subscribeToNotifications()
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred'
@@ -74,14 +57,11 @@ export const useBoardStore = defineStore('board', () => {
     if (!boardId.value) return null
     
     try {
-      const { data: board, error } = await supabase
-        .from('boards')
-        .select('*')
-        .eq('id', boardId.value)
-        .single()
-      
-      if (error) throw error
-      return board
+      const token = authStore.getToken()
+      const result = await wsAPI.request<BoardResponse>('board:get', { 
+        boardId: boardId.value 
+      }, token)
+      return result.board
     } catch (err) {
       console.error('Error fetching board details:', err)
       return null
@@ -89,12 +69,35 @@ export const useBoardStore = defineStore('board', () => {
   }
 
   const cleanup = () => {
-    if (unsubscribe) {
-      unsubscribe()
-      unsubscribe = null
-    }
+    // Unsubscribe from notifications
+    tasksStore.unsubscribeFromNotifications()
+    presenceStore.unsubscribeFromNotifications()
+    
+    // Stop presence tracking
     presenceStore.stopPresenceTracking()
+    
+    // Leave board room
+    if (boardId.value) {
+      const token = authStore.getToken()
+      wsAPI.request('board:leave', { boardId: boardId.value }, token).catch((err: Error) => {
+        console.error('Error leaving board:', err)
+      })
+    }
+    
     error.value = null
+  }
+
+  // Presence management methods
+  const getPresenceUsers = () => {
+    return presenceStore.activeUsers
+  }
+
+  const startEditing = async (boardId: string, isEditing: boolean, taskId?: string, fields?: string[]) => {
+    await tasksStore.trackEditingState(boardId, isEditing, taskId, fields)
+  }
+
+  const stopEditing = async (boardId: string) => {
+    await tasksStore.trackEditingState(boardId, false)
   }
 
   return {
@@ -104,5 +107,9 @@ export const useBoardStore = defineStore('board', () => {
     initializeBoard,
     getBoardDetails,
     cleanup,
+    // Presence methods
+    getPresenceUsers,
+    startEditing,
+    stopEditing,
   }
 })
