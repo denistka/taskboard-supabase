@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { LoadingSpinnerIcon } from '@/components/icons'
+import { GlassButton } from '@/components/ui'
 
 const authStore = useAuthStore()
 
@@ -94,10 +95,14 @@ const toggleMode = () => {
         />
       </div>
 
-      <button
+      <GlassButton
         type="submit"
         :disabled="loading"
-        class="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+        variant="neon"
+        color="purple"
+        size="md"
+        layout="inline"
+        class="w-full"
       >
         <span v-if="loading" class="flex items-center justify-center">
           <LoadingSpinnerIcon class="mr-2 h-6 w-6" />
@@ -106,7 +111,7 @@ const toggleMode = () => {
         <span v-else>
           {{ isLogin ? 'Sign In' : 'Sign Up' }}
         </span>
-      </button>
+      </GlassButton>
     </form>
 
     <!-- Toggle Mode -->

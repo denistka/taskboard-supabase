@@ -20,6 +20,11 @@ const router = createRouter({
       component: () => import('@/views/BoardPage.vue'),
       meta: { requiresAuth: true },
     },
+    {
+      path: '/glass-demo',
+      name: 'glass-demo',
+      component: () => import('@/views/GlassDemoPage.vue'),
+    },
   ],
 })
 

@@ -1,9 +1,10 @@
-<script setup lang="ts">
+ на <script setup lang="ts">
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { ArrowRightIcon } from '@/components/icons'
 import FeaturesGrid from '@/components/FeaturesGrid.vue'
 import PageLayout from '@/components/PageLayout.vue'
+import { GlassButton } from '@/components/ui'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -31,15 +32,18 @@ const goToBoard = () => {
 
         <!-- CTA Button -->
         <div class="pt-8">
-          <button
+          <GlassButton
             @click="goToBoard"
-            class="group relative inline-flex items-center justify-center px-10 py-4 text-lg font-semibold text-white transition-all duration-300 ease-in-out bg-gradient-to-r from-primary-600 to-accent-600 rounded-full shadow-2xl hover:shadow-primary-500/50 hover:scale-105 transform"
+            variant="shimmer"
+            color="purple"
+            size="md"
+            layout="inline"
           >
-            <span class="relative z-10">
+            <span class="flex items-center">
               {{ authStore.isAuthenticated ? 'Go to Board' : 'Get Started' }}
+              <ArrowRightIcon class="w-6 h-6 ml-2 transform group-hover:translate-x-1 transition-transform" />
             </span>
-            <ArrowRightIcon class="w-6 h-6 ml-2 transform group-hover:translate-x-1 transition-transform" />
-          </button>
+          </GlassButton>
         </div>
       </div>
 
@@ -52,4 +56,8 @@ const goToBoard = () => {
     </div>
   </PageLayout>
 </template>
+
+<style scoped>
+/* All glass button styles are now handled by the GlassButton component */
+</style>
 
