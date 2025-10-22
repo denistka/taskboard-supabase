@@ -2,20 +2,15 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { useTasksStore } from '@/stores/tasks'
-import PresenceIndicator from '@/components/PresenceIndicator.vue'
+import PresenceStatistics from '@/components/PresenceStatistics.vue'
 import ThemeSwitcher from '@/components/ThemeSwitcher.vue'
 import { ArrowLeftIcon, SignOutIcon } from '@/components/icons'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
-const tasksStore = useTasksStore()
 
 const currentUserId = computed(() => authStore.user?.id)
-
-// Presence data for board page
-const presenceData = computed(() => tasksStore.getPresenceData())
 
 // Header configuration based on current route
 const headerConfig = computed(() => {
@@ -44,8 +39,8 @@ const headerConfig = computed(() => {
       }
     case 'board':
       return {
-        title: 'Task Board',
-        subtitle: 'Collaborate in real-time',
+        title: '',
+        subtitle: '',
         showPresence: true,
         showSignOut: true,
         showBack: false,
@@ -55,7 +50,7 @@ const headerConfig = computed(() => {
       }
     default:
       return {
-        title: 'Task Board',
+        title: '',
         subtitle: '',
         showPresence: false,
         showSignOut: false,
@@ -79,21 +74,20 @@ const goBack = () => {
   router.back()
 }
 
-// Unified responsive layout configuration
+// Desktop layout configuration
 const layoutConfig = {
   backButton: {
-    class: "flex items-center gap-1 lg:gap-2 px-2 lg:px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-gray-700 dark:text-gray-300",
-    iconSize: "w-4 h-4 lg:w-5 lg:h-5",
-    textClass: "hidden lg:block font-medium"
+    class: "flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-gray-700 dark:text-gray-300",
+    iconSize: "w-5 h-5",
+    textClass: "font-medium"
   },
   title: {
-    titleClass: "text-xl lg:text-2xl font-bold text-gradient",
-    subtitleClass: "text-xs lg:text-sm text-gray-600 dark:text-gray-400"
+    titleClass: "text-2xl font-bold text-gradient",
+    subtitleClass: "text-sm text-gray-600 dark:text-gray-400"
   },
   signOutButton: {
-    class: "flex items-center gap-1 lg:gap-2 px-3 lg:px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors text-gray-700 dark:text-gray-300",
-    iconSize: "w-4 h-4 lg:w-5 lg:h-5",
-    textClass: "text-sm lg:text-base font-medium"
+    class: "flex items-center justify-center p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors text-gray-600 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300",
+    iconSize: "w-5 h-5"
   }
 }
 </script>
@@ -103,7 +97,6 @@ const layoutConfig = {
     :class="[
       'z-10',
       headerConfig.position === 'fixed' ? 'fixed top-0 left-0 right-0 w-full' : '',
-      headerConfig.position === 'absolute' ? 'absolute top-0 left-0 right-0' : '',
       headerConfig.position === 'static' ? 'static' : '',
       headerConfig.background 
         ? 'glass-effect border-b border-white/20 dark:border-gray-700/30 shadow-sm'
@@ -111,69 +104,43 @@ const layoutConfig = {
     ]"
   >
     <div class="max-w-[1800px] mx-auto px-6 py-4">
-      <!-- Responsive header layout -->
-      <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 lg:gap-0">
-        <!-- First row: Title and Back Button -->
-        <div class="flex items-center justify-between lg:justify-start gap-3 lg:gap-4">
-          <div class="flex items-center gap-3">
-            <button
-              v-if="headerConfig.showBack"
-              @click="goBack"
-              :class="layoutConfig.backButton.class"
-            >
-              <ArrowLeftIcon :class="layoutConfig.backButton.iconSize" />
-              <span :class="layoutConfig.backButton.textClass">Back</span>
-            </button>
-            
-            <div>
-              <h1 :class="layoutConfig.title.titleClass">{{ headerConfig.title }}</h1>
-              <p v-if="headerConfig.subtitle" :class="layoutConfig.title.subtitleClass">{{ headerConfig.subtitle }}</p>
-            </div>
-          </div>
+      <!-- Desktop header layout -->
+      <div class="flex items-center justify-between gap-4">
+        <!-- Left side: Back button and title -->
+        <div class="flex items-center gap-4">
+          <button
+            v-if="headerConfig.showBack"
+            @click="goBack"
+            :class="layoutConfig.backButton.class"
+          >
+            <ArrowLeftIcon :class="layoutConfig.backButton.iconSize" />
+            <span :class="layoutConfig.backButton.textClass">Back</span>
+          </button>
           
-          <!-- Mobile: Theme switcher and sign out on first row -->
-          <div class="flex items-center gap-3 lg:hidden">
-            <ThemeSwitcher v-if="headerConfig.showThemeSwitcher" />
-            <button
-              v-if="headerConfig.showSignOut"
-              @click="handleSignOut"
-              :class="layoutConfig.signOutButton.class"
-            >
-              <SignOutIcon :class="layoutConfig.signOutButton.iconSize" />
-              <span :class="layoutConfig.signOutButton.textClass">Sign Out</span>
-            </button>
+          <div v-if="headerConfig.title || headerConfig.subtitle">
+            <h1 v-if="headerConfig.title" :class="layoutConfig.title.titleClass">{{ headerConfig.title }}</h1>
+            <p v-if="headerConfig.subtitle" :class="layoutConfig.title.subtitleClass">{{ headerConfig.subtitle }}</p>
           </div>
         </div>
         
-        <!-- Second row: Desktop right side / Mobile users list -->
-        <div class="flex items-center justify-end lg:justify-end gap-3 lg:gap-4">
-          <!-- Mobile: Users list on second row -->
-          <PresenceIndicator 
+        <!-- Right side: Presence, theme switcher, and sign out -->
+        <div class="flex items-center gap-4">
+          <PresenceStatistics 
             v-if="headerConfig.showPresence"
-            :users="presenceData.activeUsers"
             :current-user-id="currentUserId"
-            class="lg:hidden"
+            :show-details="true"
           />
           
-          <!-- Desktop: All elements on right side -->
-          <div class="hidden lg:flex items-center gap-3 lg:gap-4">
-            <PresenceIndicator 
-              v-if="headerConfig.showPresence"
-              :users="presenceData.activeUsers"
-              :current-user-id="currentUserId"
-            />
-            
-            <ThemeSwitcher v-if="headerConfig.showThemeSwitcher" />
-            
-            <button
-              v-if="headerConfig.showSignOut"
-              @click="handleSignOut"
-              :class="layoutConfig.signOutButton.class"
-            >
-              <SignOutIcon :class="layoutConfig.signOutButton.iconSize" />
-              <span :class="layoutConfig.signOutButton.textClass">Sign Out</span>
-            </button>
-          </div>
+          <ThemeSwitcher v-if="headerConfig.showThemeSwitcher" />
+          
+          <button
+            v-if="headerConfig.showSignOut"
+            @click="handleSignOut"
+            :class="layoutConfig.signOutButton.class"
+            title="Sign Out"
+          >
+            <SignOutIcon :class="layoutConfig.signOutButton.iconSize" />
+          </button>
         </div>
       </div>
     </div>

@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import { ref, computed, watchEffect } from 'vue'
-import type { Task, UserPresence } from '@/types'
+import type { Task } from '@/types'
 import TaskDetailsHeader from './TaskDetailsHeader.vue'
 import TaskDetailsForm from './TaskDetailsForm.vue'
 import TaskDetailsMetadata from './TaskDetailsMetadata.vue'
 import TaskDetailsActions from './TaskDetailsActions.vue'
+import { usePresence } from '@/composables/usePresence'
 
 interface Props {
   task: Task | null
   boardId?: string
-  activeUsers: UserPresence[]
   currentUserId?: string
 }
 
@@ -28,15 +28,8 @@ const isDeleting = ref(false)
 // Computed properties for better performance
 const isTaskOpen = computed(() => !!props.task)
 
-// Get users editing this specific task
-const usersEditingThisTask = computed(() => {
-  if (!props.task || !props.boardId) return []
-  return props.activeUsers.filter(user => 
-    (user.event_data?.editingTaskId === props.task?.id || 
-     (user.event_data?.currentAction && user.event_data?.actionTaskTitle === props.task?.title)) && 
-    user.user_id !== props.currentUserId
-  )
-})
+// Use universal presence system - listen for events on this specific task
+const { usersHandlingEvent } = usePresence(props.task?.id || '', props.currentUserId)
 
 // Handle task changes and form sync
 watchEffect(() => {
@@ -57,13 +50,13 @@ watchEffect(() => {
     <div v-if="isTaskOpen" class="fixed opacity-70 inset-y-0 right-0 w-full md:w-[500px] bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl border border-white/20 dark:border-gray-700/30 shadow-2xl z-50 overflow-y-auto">
       <!-- Red overlay when being edited by others -->
       <div 
-        v-if="usersEditingThisTask.length > 0"
+        v-if="usersHandlingEvent.length > 0"
         class="fixed inset-y-0 right-0 w-full md:w-[500px] bg-red-500/20 pointer-events-none z-40"
       ></div>
       
       <!-- Header -->
       <TaskDetailsHeader 
-        :users-editing-this-task="usersEditingThisTask"
+        :users-editing-this-task="usersHandlingEvent"
         @close="emit('close')"
       />
 
@@ -72,7 +65,7 @@ watchEffect(() => {
         <!-- Form Fields -->
         <TaskDetailsForm 
           :task="task"
-          :users-editing-this-task="usersEditingThisTask"
+          :users-editing-this-task="usersHandlingEvent"
           @update="emit('update', $event)"
           @editing-state-changed="(isEditing, taskId, fields) => emit('editingStateChanged', isEditing, taskId, fields)"
         />
@@ -82,7 +75,7 @@ watchEffect(() => {
 
         <!-- Actions -->
         <TaskDetailsActions 
-          :users-editing-this-task="usersEditingThisTask"
+          :users-editing-this-task="usersHandlingEvent"
           @delete="emit('delete')"
         />
       </div>

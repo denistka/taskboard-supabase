@@ -39,15 +39,6 @@ create table "public"."tasks" (
 
 alter table "public"."tasks" enable row level security;
 
-create table "public"."user_presence" (
-    "id" uuid not null default gen_random_uuid(),
-    "user_id" uuid not null,
-    "board_id" uuid not null,
-    "last_seen" timestamp with time zone default now()
-);
-
-
-alter table "public"."user_presence" enable row level security;
 
 CREATE UNIQUE INDEX boards_pkey ON public.boards USING btree (id);
 
@@ -59,17 +50,11 @@ CREATE INDEX idx_tasks_position ON public.tasks USING btree ("position");
 
 CREATE INDEX idx_tasks_status ON public.tasks USING btree (status);
 
-CREATE INDEX idx_user_presence_board_id ON public.user_presence USING btree (board_id);
-
-CREATE INDEX idx_user_presence_last_seen ON public.user_presence USING btree (last_seen);
 
 CREATE UNIQUE INDEX profiles_pkey ON public.profiles USING btree (id);
 
 CREATE UNIQUE INDEX tasks_pkey ON public.tasks USING btree (id);
 
-CREATE UNIQUE INDEX user_presence_pkey ON public.user_presence USING btree (id);
-
-CREATE UNIQUE INDEX user_presence_user_id_board_id_key ON public.user_presence USING btree (user_id, board_id);
 
 alter table "public"."boards" add constraint "boards_pkey" PRIMARY KEY using index "boards_pkey";
 
@@ -77,7 +62,6 @@ alter table "public"."profiles" add constraint "profiles_pkey" PRIMARY KEY using
 
 alter table "public"."tasks" add constraint "tasks_pkey" PRIMARY KEY using index "tasks_pkey";
 
-alter table "public"."user_presence" add constraint "user_presence_pkey" PRIMARY KEY using index "user_presence_pkey";
 
 alter table "public"."boards" add constraint "boards_created_by_fkey" FOREIGN KEY (created_by) REFERENCES profiles(id) ON DELETE CASCADE not valid;
 
@@ -99,15 +83,6 @@ alter table "public"."tasks" add constraint "tasks_created_by_fkey" FOREIGN KEY 
 
 alter table "public"."tasks" validate constraint "tasks_created_by_fkey";
 
-alter table "public"."user_presence" add constraint "user_presence_board_id_fkey" FOREIGN KEY (board_id) REFERENCES boards(id) ON DELETE CASCADE not valid;
-
-alter table "public"."user_presence" validate constraint "user_presence_board_id_fkey";
-
-alter table "public"."user_presence" add constraint "user_presence_user_id_board_id_key" UNIQUE using index "user_presence_user_id_board_id_key";
-
-alter table "public"."user_presence" add constraint "user_presence_user_id_fkey" FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE not valid;
-
-alter table "public"."user_presence" validate constraint "user_presence_user_id_fkey";
 
 set check_function_bodies = off;
 
@@ -216,44 +191,26 @@ to authenticated
 using (true);
 
 
-create policy "Task creators can delete their tasks"
+-- Task deletion policy that allows all authenticated users to delete tasks
+-- This is needed for real-time updates when tasks are deleted
+create policy "Authenticated users can delete tasks"
 on "public"."tasks"
 as permissive
 for delete
 to authenticated
-using ((auth.uid() = created_by));
+using (true);
 
 
-create policy "Authenticated users can view presence"
-on "public"."user_presence"
+-- Policy to ensure all authenticated users can see all task changes for real-time
+-- This is required for real-time subscriptions to work with RLS
+create policy "Authenticated users can see all task changes for realtime"
+on "public"."tasks"
 as permissive
-for select
+for all
 to authenticated
 using (true);
 
 
-create policy "Users can delete their own presence"
-on "public"."user_presence"
-as permissive
-for delete
-to authenticated
-using ((auth.uid() = user_id));
-
-
-create policy "Users can insert their own presence"
-on "public"."user_presence"
-as permissive
-for insert
-to authenticated
-with check ((auth.uid() = user_id));
-
-
-create policy "Users can update their own presence"
-on "public"."user_presence"
-as permissive
-for update
-to authenticated
-using ((auth.uid() = user_id));
 
 
 CREATE TRIGGER update_boards_updated_at BEFORE UPDATE ON public.boards FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
@@ -262,5 +219,3 @@ CREATE TRIGGER update_tasks_updated_at BEFORE UPDATE ON public.tasks FOR EACH RO
 
 
 CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION handle_new_user();
-
-

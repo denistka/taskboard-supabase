@@ -14,9 +14,6 @@ const boardStore = useBoardStore()
 
 const currentUserId = computed(() => authStore.user?.id)
 
-// Presence data for components
-const presenceData = computed(() => tasksStore.getPresenceData())
-
 const handleCreateTask = async (status: TaskStatus, title: string, description: string) => {
   if (!boardStore.boardId) return
   try {
@@ -81,7 +78,7 @@ const handleTaskDelete = async () => {
 const handleEditingStateChanged = async (isEditing: boolean, taskId?: string, fields?: string[]) => {
   if (!boardStore.boardId) return
   try {
-    await boardStore.startEditing(boardStore.boardId, isEditing, taskId, fields)
+    await tasksStore.trackEditingState(boardStore.boardId, isEditing, taskId, fields)
   } catch (error) {
     console.error('Error updating editing state:', error)
   }
@@ -140,7 +137,6 @@ onUnmounted(() => {
               :tasks="column.tasks"
               :board-id="boardStore.boardId"
               :color="column.color"
-              :active-users="presenceData.activeUsers"
               :current-user-id="currentUserId"
               @create-task="(title, description) => handleCreateTask(column.status, title, description)"
               @delete-task="handleDeleteTask"
@@ -156,7 +152,6 @@ onUnmounted(() => {
       <TaskDetails
         :task="tasksStore.selectedTask"
         :board-id="boardStore.boardId || undefined"
-        :active-users="presenceData.activeUsers"
         :current-user-id="currentUserId"
         @close="tasksStore.selectTask(null)"
         @update="handleTaskUpdate"

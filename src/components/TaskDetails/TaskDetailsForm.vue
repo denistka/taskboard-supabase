@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import type { Task, TaskStatus, UserPresence } from '@/types'
+import { usePresence } from '@/composables/usePresence'
 
 interface Props {
   task: Task | null
@@ -18,12 +19,8 @@ const editedTitle = ref('')
 const editedDescription = ref('')
 const editedStatus = ref<TaskStatus>('todo')
 
-// Get users editing specific fields
-const getUsersEditingField = (field: string) => {
-  return props.usersEditingThisTask.filter(user => 
-    user.event_data?.editingFields?.includes(field)
-  )
-}
+// Use universal presence system for field-specific editing
+const { getUsersEditingField } = usePresence(props.task?.id || '', undefined, ['title', 'description', 'status'])
 
 // Computed property to determine which fields are being edited
 const editingFields = computed(() => {
@@ -114,9 +111,9 @@ const getStatusLabel = (status: TaskStatus) => {
     <div>
       <div class="flex items-center justify-between">
         <label class="label">Title</label>
-        <div v-if="getUsersEditingField('title').length > 0" class="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
+        <div v-if="getUsersEditingField('title').value.length > 0" class="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
           <div class="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></div>
-          <span>{{ getUsersEditingField('title').map(u => u.profile?.full_name || u.profile?.email?.split('@')[0] || 'User').join(', ') }} editing</span>
+          <span>{{ getUsersEditingField('title').value.map(u => u.profile?.full_name || u.profile?.email?.split('@')[0] || 'User').join(', ') }} editing</span>
         </div>
       </div>
       <input
@@ -124,7 +121,7 @@ const getStatusLabel = (status: TaskStatus) => {
         type="text"
         class="input text-lg font-semibold"
         :class="{ 
-          'ring-2 ring-amber-200 dark:ring-amber-800': getUsersEditingField('title').length > 0,
+          'ring-2 ring-amber-200 dark:ring-amber-800': getUsersEditingField('title').value.length > 0,
           'opacity-50 cursor-not-allowed': usersEditingThisTask.length > 0
         }"
         :disabled="usersEditingThisTask.length > 0"
@@ -136,9 +133,9 @@ const getStatusLabel = (status: TaskStatus) => {
     <div>
       <div class="flex items-center justify-between">
         <label class="label">Status</label>
-        <div v-if="getUsersEditingField('status').length > 0" class="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
+        <div v-if="getUsersEditingField('status').value.length > 0" class="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
           <div class="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></div>
-          <span>{{ getUsersEditingField('status').map(u => u.profile?.full_name || u.profile?.email?.split('@')[0] || 'User').join(', ') }} editing</span>
+          <span>{{ getUsersEditingField('status').value.map(u => u.profile?.full_name || u.profile?.email?.split('@')[0] || 'User').join(', ') }} editing</span>
         </div>
       </div>
       <div class="flex gap-2">
@@ -164,16 +161,16 @@ const getStatusLabel = (status: TaskStatus) => {
     <div>
       <div class="flex items-center justify-between">
         <label class="label">Description</label>
-        <div v-if="getUsersEditingField('description').length > 0" class="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
+        <div v-if="getUsersEditingField('description').value.length > 0" class="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400">
           <div class="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></div>
-          <span>{{ getUsersEditingField('description').map(u => u.profile?.full_name || u.profile?.email?.split('@')[0] || 'User').join(', ') }} editing</span>
+          <span>{{ getUsersEditingField('description').value.map(u => u.profile?.full_name || u.profile?.email?.split('@')[0] || 'User').join(', ') }} editing</span>
         </div>
       </div>
       <textarea
         v-model="editedDescription"
         class="input min-h-[150px] resize-none"
         :class="{ 
-          'ring-2 ring-amber-200 dark:ring-amber-800': getUsersEditingField('description').length > 0,
+          'ring-2 ring-amber-200 dark:ring-amber-800': getUsersEditingField('description').value.length > 0,
           'opacity-50 cursor-not-allowed': usersEditingThisTask.length > 0
         }"
         :disabled="usersEditingThisTask.length > 0"

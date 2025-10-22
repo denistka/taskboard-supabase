@@ -6,7 +6,9 @@
   "type": "module",
   "scripts": {
     "start": "node index.js",
-    "dev": "node --watch index.js"
+    "start:universal": "node universal-server.js",
+    "dev": "node --watch index.js",
+    "dev:universal": "node --watch universal-server.js"
   },
   "keywords": [
     "websocket",
@@ -20,6 +22,9 @@
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "socket.io": "^4.7.5",
-    "tslib": "^2.8.1"
+    "socket.io-client": "^4.8.1",
+    "tslib": "^2.8.1",
+    "uuid": "^9.0.1",
+    "ws": "^8.18.3"
   }
 }

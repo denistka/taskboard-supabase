@@ -2,8 +2,7 @@ import express from 'express'
 import { createServer } from 'http'
 import { Server } from 'socket.io'
 import { config } from './src/config.js'
-import { presenceManager } from './src/presence.js'
-import { handleRequest, handleDisconnect, handleHeartbeat } from './src/routes.js'
+import { orchestrator } from './src/orchestrator/index.js'
 
 const app = express()
 const server = createServer(app)
@@ -11,47 +10,47 @@ const io = new Server(server, {
   cors: config.cors
 })
 
-// Health check endpoint
+// Health check endpoint (KISS)
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok', 
-    connected: io.engine.clientsCount,
-    presence: {
-      totalUsers: presenceManager.socketPresence.size,
-      boards: presenceManager.boardUsers.size
-    }
+    connected: io.engine.clientsCount
   })
 })
 
-// WebSocket connection handler
+// WebSocket connection handler (KISS)
 io.on('connection', (socket) => {
   console.log(`✓ Client connected: ${socket.id}`)
   
-  // Request router
-  socket.on('request', (data, callback) => {
-    handleRequest(socket, data, callback)
+  // Universal request handler
+  socket.on('request', async (data) => {
+    try {
+      await orchestrator.processEvent(socket, data, io)
+    } catch (error) {
+      console.error('Request processing error:', error)
+      socket.send(JSON.stringify({
+        ...data,
+        phase: 'res-error',
+        error: { message: error.message }
+      }))
+    }
   })
   
+  // Handle disconnect
   socket.on('disconnect', () => {
-    handleDisconnect(socket)
+    console.log(`✗ Client disconnected: ${socket.id}`)
   })
   
   // Handle heartbeat
   socket.on('heartbeat', () => {
-    handleHeartbeat(socket)
+    socket.send(JSON.stringify({ type: 'pong', ts: Date.now() }))
   })
 })
 
 // Start server
 server.listen(config.port, () => {
-  console.log(`🚀 WebSocket server running on port ${config.port}`)
+  console.log(`🚀 Universal WebSocket server running on port ${config.port}`)
 })
 
-// Cleanup stale connections every 5 minutes
-setInterval(() => {
-  const cleaned = presenceManager.cleanupStaleConnections()
-  if (cleaned > 0) {
-    console.log(`Cleaned up ${cleaned} stale connections`)
-  }
-}, 5 * 60 * 1000)
+// No cleanup needed without presence
 

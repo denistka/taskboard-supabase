@@ -1,87 +1,111 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { User } from '@supabase/supabase-js'
-import type { AuthResponse, AuthSignInPayload, AuthSignUpPayload } from '@/types'
-import { wsAPI } from '@/lib/websocket'
+import { api } from '@/api/ws'
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
   const loading = ref(true)
+  const token = ref<string | null>(null)
 
-  const isAuthenticated = computed(() => !!user.value)
+  const isAuthenticated = computed(() => !!user.value && !!token.value)
   
   // Helper to get current token
   const getToken = (): string | undefined => {
-    return localStorage.getItem('auth_token') || undefined
+    return token.value || undefined
   }
 
   const initialize = async () => {
     loading.value = true
     try {
-      // WebSocket store will handle connection with token from localStorage
-      // Just verify the session if we have a token
-      const token = localStorage.getItem('auth_token')
+      // Check for existing token in localStorage
+      const savedToken = localStorage.getItem('auth_token')
       
-      if (token && wsAPI.isConnected) {
+      if (savedToken) {
+        token.value = savedToken
+        
+        // Re-authenticate with the saved token
+        await api.authenticate(savedToken)
+        
+        // Get user data from server
         try {
-          // Verify session with server
-          const result = await wsAPI.request<{ user: User }>('auth:verify', {}, token)
-          user.value = result.user
-        } catch (error) {
-          console.error('Session verification failed:', error)
-          // Clear invalid token
+          const userData = await api.getCurrentUser()
+          user.value = userData
+        } catch (userError) {
+          console.warn('Could not fetch user data:', userError)
+          // Token might be invalid, clear it
           localStorage.removeItem('auth_token')
-          user.value = null
+          token.value = null
         }
+        
+        console.log('Restored authentication from localStorage')
+      } else {
+        console.log('No existing authentication found - ready for sign in')
       }
     } catch (error) {
       console.error('Auth initialization error:', error)
+      // Clear invalid token
+      localStorage.removeItem('auth_token')
+      token.value = null
+      user.value = null
     } finally {
       loading.value = false
     }
   }
 
   const signUp = async (email: string, password: string, fullName?: string) => {
-    const payload: AuthSignUpPayload = { email, password, fullName }
-    const result = await wsAPI.request<AuthResponse>('auth:signup', payload)
+    const result = await api.signUp({ email, password, fullName: fullName || '' })
     
-    user.value = result.user
-    localStorage.setItem('auth_token', result.token)
+    if (result?.session?.access_token) {
+      user.value = result.user
+      token.value = result.session.access_token
+      
+      // Persist only token to localStorage
+      localStorage.setItem('auth_token', result.session.access_token)
+      
+      // Authenticate with the new token
+      await api.authenticate(result.session.access_token)
+    }
     
     return result
   }
 
   const signIn = async (email: string, password: string) => {
-    // WebSocket is already connected by initialize()
-    const payload: AuthSignInPayload = { email, password }
-    const result = await wsAPI.request<AuthResponse>('auth:signin', payload)
+    const result = await api.signIn({ email, password })
     
-    user.value = result.user
-    localStorage.setItem('auth_token', result.token)
+    if (result?.session?.access_token) {
+      user.value = result.user
+      token.value = result.session.access_token
+      
+      // Persist only token to localStorage
+      localStorage.setItem('auth_token', result.session.access_token)
+      
+      // Authenticate with the new token
+      await api.authenticate(result.session.access_token)
+    }
     
     return result
   }
 
   const signOut = async () => {
     try {
-      // Notify server about logout
-      if (wsAPI.isConnected) {
-        const token = getToken()
-        await wsAPI.request('auth:signout', {}, token)
-      }
-    } catch (error) {
-      console.error('Error during signout:', error)
-    } finally {
       // Clean up local state
       user.value = null
+      token.value = null
+      
+      // Remove token from localStorage
       localStorage.removeItem('auth_token')
+      
       // Note: Don't disconnect - keep connection for next login
+    } catch (error) {
+      console.error('Error during signout:', error)
     }
   }
 
   return {
     user,
     loading,
+    token,
     isAuthenticated,
     getToken,
     initialize,

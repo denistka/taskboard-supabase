@@ -4,6 +4,7 @@ import { useAuthStore } from './auth'
 import { useTasksStore } from './tasks'
 import { usePresenceStore } from './presence'
 import { wsAPI } from '@/lib/websocket'
+import { api } from '@/api/ws'
 import type { Board, BoardResponse } from '@/types'
 
 export const useBoardStore = defineStore('board', () => {
@@ -26,18 +27,29 @@ export const useBoardStore = defineStore('board', () => {
 
       // Get or create a default board through WebSocket
       const token = authStore.getToken()
-      const result = await wsAPI.request<BoardResponse>('board:get_or_create', {}, token)
+      let result
       
-      if (result.board) {
-        boardId.value = result.board.id
+      try {
+        // Try to get existing board first
+        result = await api.getUserBoard(authStore.user.id)
+      } catch (error) {
+        // If no board exists, create a new one
+        result = await api.createBoard({
+          name: 'My Board',
+          description: 'Default board'
+        }, authStore.user.id)
+      }
+      
+      if (result) {
+        boardId.value = result.id
         
         // Join the board room on WebSocket
-        await wsAPI.request('board:join', { boardId: result.board.id }, token)
+        await wsAPI.request('board', 'join', ['db'], { boardId: result.id }, token)
         
         // Initialize board data
         await Promise.all([
-          tasksStore.fetchTasks(result.board.id),
-          presenceStore.startPresenceTracking(result.board.id)
+          tasksStore.fetchTasks(result.id),
+          presenceStore.startPresenceTracking(result.id)
         ])
         
         // Subscribe to real-time notifications
@@ -58,7 +70,7 @@ export const useBoardStore = defineStore('board', () => {
     
     try {
       const token = authStore.getToken()
-      const result = await wsAPI.request<BoardResponse>('board:get', { 
+      const result = await wsAPI.request<BoardResponse>('board', 'get', ['db'], { 
         boardId: boardId.value 
       }, token)
       return result.board
@@ -79,7 +91,7 @@ export const useBoardStore = defineStore('board', () => {
     // Leave board room
     if (boardId.value) {
       const token = authStore.getToken()
-      wsAPI.request('board:leave', { boardId: boardId.value }, token).catch((err: Error) => {
+      wsAPI.request('board', 'leave', ['db'], { boardId: boardId.value }, token).catch((err: Error) => {
         console.error('Error leaving board:', err)
       })
     }
@@ -87,18 +99,8 @@ export const useBoardStore = defineStore('board', () => {
     error.value = null
   }
 
-  // Presence management methods
-  const getPresenceUsers = () => {
-    return presenceStore.activeUsers
-  }
-
-  const startEditing = async (boardId: string, isEditing: boolean, taskId?: string, fields?: string[]) => {
-    await tasksStore.trackEditingState(boardId, isEditing, taskId, fields)
-  }
-
-  const stopEditing = async (boardId: string) => {
-    await tasksStore.trackEditingState(boardId, false)
-  }
+  // Note: Presence management has been moved to useTaskPresence composable
+  // Components should use the composable directly for better performance
 
   return {
     boardId,
@@ -107,9 +109,5 @@ export const useBoardStore = defineStore('board', () => {
     initializeBoard,
     getBoardDetails,
     cleanup,
-    // Presence methods
-    getPresenceUsers,
-    startEditing,
-    stopEditing,
   }
 })

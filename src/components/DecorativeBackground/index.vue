@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { usePresenceStore } from '@/stores/presence'
 import { 
   DeltaTimeCalculator, 
   ParticleManager, 
@@ -13,7 +12,6 @@ import {
 const route = useRoute()
 const router = useRouter()
 const canvasRef = ref<HTMLCanvasElement | null>(null)
-const presenceStore = usePresenceStore()
 
 // Get current page name
 const currentPage = computed(() => route.name as string)
@@ -83,11 +81,8 @@ const brightnessClasses = computed(() => {
 const render = (time: number) => {
   if (!webglRenderer || !canvasRef.value) return
   
-  // Get presence event count from store
-  const presenceEventCount = presenceStore.getPresenceEventCount(1000)
-  
-  // Update particles with dynamic timing
-  const deltaTime = deltaTimeCalculator.calculateDeltaTime(routerNavigating, presenceEventCount)
+  // Update particles with dynamic timing (simplified - no presence event count)
+  const deltaTime = deltaTimeCalculator.calculateDeltaTime(routerNavigating, 0)
   particleManager.updateParticles(deltaTime)
   
   // Render particles
@@ -124,8 +119,7 @@ router.beforeEach((_to, _from, next) => {
 
 router.afterEach((_to, _from) => {
   routerNavigating.value = false // Router end event
-  const presenceEventCount = presenceStore.getPresenceEventCount(5000)
-  deltaTimeCalculator.startRouterEndCountdown(presenceEventCount)
+  deltaTimeCalculator.startRouterEndCountdown(0) // Simplified - no presence event count
 })
 
 // Lifecycle hooks

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watchEffect } from 'vue'
-import type { Task, TaskStatus, UserPresence } from '@/types'
+import type { Task, TaskStatus } from '@/types'
 import TaskCard from './TaskCard.vue'
 import Sortable from 'sortablejs'
 import { onMounted } from 'vue'
@@ -12,7 +12,6 @@ interface Props {
   tasks: Task[]
   color: string
   boardId: string
-  activeUsers: UserPresence[]
   currentUserId?: string
 }
 
@@ -96,7 +95,7 @@ onMounted(() => {
 <template>
   <div ref="columnRef" class="flex-1 min-w-[320px] max-w-[400px] flex flex-col relative z-30 h-full w-[320px] flex-shrink-0">
     <!-- Fixed Header -->
-    <div class="z-10 bg-white/30 dark:bg-gray-900/30 backdrop-blur-xl border border-white/20 dark:border-gray-700/30 rounded-2xl p-4 border-t-4 relative z-10 flex-shrink-0 shadow-lg" :class="`border-t-${color}-500`">
+    <div class="bg-white/30 dark:bg-gray-900/30 backdrop-blur-xl border border-white/20 dark:border-gray-700/30 rounded-2xl p-4 border-t-4 relative z-10 flex-shrink-0 shadow-lg" :class="`border-t-${color}-500`">
       <div class="flex items-center justify-between mb-2">
         <div class="flex items-center gap-3">
           <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">
@@ -184,7 +183,6 @@ onMounted(() => {
         >
           <TaskCard
             :task="task"
-            :active-users="activeUsers"
             :current-user-id="currentUserId"
             @click="emit('taskClick', task)"
             @delete="emit('deleteTask', task.id)"

@@ -1,17 +1,16 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import type { 
-  Task, 
-  TaskStatus,
-  TaskCreatePayload,
   TaskUpdatePayload,
   TaskMovePayload,
-  TaskResponse,
-  TasksResponse
+  TaskResponse
 } from '@/types'
 import { useAuthStore } from './auth'
 import { usePresenceStore } from './presence'
 import { wsAPI } from '@/lib/websocket'
+import { api, type Task } from '@/api/ws'
+
+type TaskStatus = 'todo' | 'in_progress' | 'done'
 
 export const useTasksStore = defineStore('tasks', () => {
   const tasks = ref<Task[]>([])
@@ -20,61 +19,39 @@ export const useTasksStore = defineStore('tasks', () => {
   const authStore = useAuthStore()
   const presenceStore = usePresenceStore()
 
-  // Helper function to track presence actions with auto-clear
-  const trackAction = async (boardId: string, action: string, taskTitle?: string) => {
+  // Helper function to track presence actions with auto-clear using universal system
+  //TODO: boardId and taskId should be eventName
+  const trackAction = async (boardId: string, action: string, taskId?: string) => {
+    const eventKey = taskId || `action-${action}`
     await presenceStore.setEventData(boardId, {
-      currentAction: action,
-      actionTaskTitle: taskTitle,
-      actionStartTime: Date.now()
+      [eventKey]: {
+        action,
+        timestamp: Date.now()
+      }
     })
     
     // Auto-clear action after 5 seconds
     setTimeout(() => {
-      presenceStore.clearEventData(boardId, ['currentAction', 'actionTaskTitle', 'actionStartTime'])
+      presenceStore.clearEventData(boardId, [eventKey])
     }, 5000)
   }
 
-  // Presence tracking for editing states
+  // Presence tracking for editing states using universal system
+  //TODO: boardId and taskId should be eventName
   const trackEditingState = async (boardId: string, isEditing: boolean, taskId?: string, fields?: string[]) => {
-    if (isEditing) {
+    if (isEditing && taskId) {
       await presenceStore.setEventDataDebounced(boardId, {
-        isEditing: true,
-        editingTaskId: taskId,
+        [taskId]: 'editing',
         editingFields: fields,
         editingStartTime: Date.now()
       })
-    } else {
-      await presenceStore.clearEventData(boardId, ['isEditing', 'editingTaskId', 'editingFields', 'editingStartTime'])
+    } else if (taskId) {
+      await presenceStore.clearEventData(boardId, [taskId, 'editingFields', 'editingStartTime'])
     }
   }
 
-  // Get presence data for components
-  const getPresenceData = () => {
-    return {
-      activeUsers: presenceStore.activeUsers,
-      isUserEditing: (userId: string, taskId?: string) => {
-        return presenceStore.activeUsers.some(user => 
-          user.user_id === userId && 
-          user.event_data?.isEditing && 
-          (!taskId || user.event_data?.editingTaskId === taskId)
-        )
-      },
-      getUsersEditingTask: (taskId: string, excludeUserId?: string) => {
-        return presenceStore.activeUsers.filter(user => 
-          (user.event_data?.editingTaskId === taskId || 
-           (user.event_data?.currentAction && user.event_data?.actionTaskTitle)) && 
-          (!excludeUserId || user.user_id !== excludeUserId)
-        )
-      },
-      getUsersEditingField: (taskId: string, field: string, excludeUserId?: string) => {
-        return presenceStore.activeUsers.filter(user => 
-          user.event_data?.editingTaskId === taskId &&
-          user.event_data?.editingFields?.includes(field) &&
-          (!excludeUserId || user.user_id !== excludeUserId)
-        )
-      }
-    }
-  }
+  // Note: Presence logic has been moved to useTaskPresence composable
+  // This provides better performance and centralized logic
 
   // Memoized computed properties for better performance
   const todoTasks = computed(() => {
@@ -96,8 +73,8 @@ export const useTasksStore = defineStore('tasks', () => {
     loading.value = true
     try {
       const token = authStore.getToken()
-      const result = await wsAPI.request<TasksResponse>('task:fetch', { boardId }, token)
-      tasks.value = result.tasks
+      const result = await wsAPI.request<Task[]>('task', 'fetch', ['db'], { boardId }, token)
+      tasks.value = result
     } catch (error) {
       console.error('Error fetching tasks:', error)
       throw error
@@ -112,23 +89,21 @@ export const useTasksStore = defineStore('tasks', () => {
     // Track presence action
     await trackAction(boardId, 'creating new task')
 
-    const payload: TaskCreatePayload = {
-      board_id: boardId,
-      title,
-      description,
-      status,
-    }
-
     try {
-      const token = authStore.getToken()
-      const result = await wsAPI.request<TaskResponse>('task:create', payload, token)
+      const result = await api.createTask({
+        board_id: boardId,
+        title,
+        description,
+        status,
+        position: tasks.value.length
+      }, authStore.user.id)
       
       // Add task locally (server will broadcast to others)
-      if (result.task) {
-        tasks.value.push(result.task)
+      if (result) {
+        tasks.value.push(result)
         
         // Auto-select newly created task
-        selectedTask.value = result.task
+        selectedTask.value = result
       }
     } catch (error) {
       console.error('Error creating task:', error)
@@ -146,7 +121,8 @@ export const useTasksStore = defineStore('tasks', () => {
     }
 
     // Track presence action
-    await trackAction(currentTask.board_id, 'editing task', currentTask.title)
+    //TODO: boardId and taskId should be eventName
+    await trackAction(currentTask.board_id, 'editing task', taskId)
 
     // Optimistic update for better UX
     const originalTask = { ...currentTask }
@@ -166,7 +142,7 @@ export const useTasksStore = defineStore('tasks', () => {
         updates: {
           title: updates.title,
           description: updates.description,
-          status: updates.status,
+          status: updates.status as TaskStatus,
           assigned_to: updates.assigned_to,
           position: updates.position,
         },
@@ -174,7 +150,7 @@ export const useTasksStore = defineStore('tasks', () => {
       }
 
       const token = authStore.getToken()
-      const result = await wsAPI.request<TaskResponse>('task:update', payload, token)
+      const result = await wsAPI.request<TaskResponse>('task', 'update', ['db'], payload, token)
 
       // Update successful - update local task with server response
       if (result.task && taskIndex !== -1) {
@@ -202,11 +178,12 @@ export const useTasksStore = defineStore('tasks', () => {
     if (!task) return
 
     // Track presence action
-    await trackAction(task.board_id, 'deleting task', task.title)
+    //TODO: boardId and taskId should be eventName
+    await trackAction(task.board_id, 'deleting task', taskId)
 
     try {
       const token = authStore.getToken()
-      await wsAPI.request('task:delete', { taskId }, token)
+      await wsAPI.request('task', 'delete', ['db'], { taskId }, token)
       
       // Remove from local state
       tasks.value = tasks.value.filter(t => t.id !== taskId)
@@ -224,7 +201,8 @@ export const useTasksStore = defineStore('tasks', () => {
     if (!task) return
 
     // Track presence action
-    await trackAction(task.board_id, 'moving task', task.title)
+    //TODO: boardId and taskId should be eventName
+    await trackAction(task.board_id, 'moving task', taskId)
 
     const oldStatus = task.status
     const oldPosition = task.position
@@ -264,7 +242,7 @@ export const useTasksStore = defineStore('tasks', () => {
         .filter(t => t.status === newStatus || t.status === oldStatus)
         .map(t => ({
           id: t.id,
-          status: t.status,
+          status: t.status as TaskStatus,
           position: t.position,
           version: t.version,
         }))
@@ -275,7 +253,7 @@ export const useTasksStore = defineStore('tasks', () => {
       }
 
       const token = authStore.getToken()
-      await wsAPI.request('task:move', payload, token)
+      await wsAPI.request('task', 'move', ['db'], payload, token)
       
     } catch (error) {
       // Revert optimistic updates on error
@@ -364,6 +342,5 @@ export const useTasksStore = defineStore('tasks', () => {
     selectTask,
     // Presence methods
     trackEditingState,
-    getPresenceData,
   }
 })

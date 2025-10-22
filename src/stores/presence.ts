@@ -10,67 +10,36 @@ export const usePresenceStore = defineStore('presence', () => {
   const authStore = useAuthStore()
   let presenceInterval: ReturnType<typeof setInterval> | null = null
   let currentBoardId: string | null = null
-  
-  // Track last presence state to avoid redundant updates
-  let lastPresenceState: {
-    boardId: string
-    eventData: Record<string, any>
-  } | null = null
+  let lastEventData: Record<string, any> | null = null
 
-  // Track presence events for deltaTime calculation
-  const presenceEvents = ref<number[]>([])
-  const maxEventHistory = 100 // Keep last 100 events for calculation
-
-  // Add presence event timestamp
-  const addPresenceEvent = () => {
-    const now = Date.now()
-    presenceEvents.value.push(now)
-    
-    // Keep only recent events and limit array size
-    const tenSecondsAgo = now - 10000
-    presenceEvents.value = presenceEvents.value
-      .filter(timestamp => timestamp > tenSecondsAgo)
-      .slice(-maxEventHistory)
-  }
-
-  // Get presence event count in specified time window
-  const getPresenceEventCount = (timeWindowMs: number = 10000): number => {
-    const now = Date.now()
-    const timeAgo = now - timeWindowMs
-    return presenceEvents.value.filter(timestamp => timestamp > timeAgo).length
-  }
-
-  // Internal function - not exported
+  // Simple presence update - no complex state tracking
   const updatePresence = async (boardId: string, eventData: Record<string, any> = {}) => {
     if (!authStore.user) return
 
-    const currentState = { boardId, eventData }
-    if (lastPresenceState && 
-        lastPresenceState.boardId === currentState.boardId &&
-        JSON.stringify(lastPresenceState.eventData) === JSON.stringify(currentState.eventData)) {
+    // Simple check - only update if data actually changed
+    if (lastEventData && JSON.stringify(lastEventData) === JSON.stringify(eventData)) {
       return
     }
 
     try {
       const token = authStore.getToken()
-      await wsAPI.request('presence:update', { boardId, eventData }, token)
-      lastPresenceState = currentState
-      addPresenceEvent() // Track this presence event
+      await wsAPI.request('presence', 'update', ['presence'], { boardId, eventData }, token)
+      lastEventData = eventData
     } catch (error) {
       console.error('Error updating presence:', error)
     }
   }
   
-  // Debounced updates for frequent changes (like editing)
-  const debouncedUpdatePresence = debounce(updatePresence, 300)
+  // Debounced version for frequent updates
+  const debouncedUpdate = debounce(updatePresence, 300)
   
-  // Universal functions for any event data
+  // Universal event functions - KISS approach
   const setEventData = async (boardId: string, eventData: Record<string, any>) => {
     await updatePresence(boardId, eventData)
   }
 
   const setEventDataDebounced = async (boardId: string, eventData: Record<string, any>) => {
-    await debouncedUpdatePresence(boardId, eventData)
+    await debouncedUpdate(boardId, eventData)
   }
 
   const clearEventData = async (boardId: string, keys: string[]) => {
@@ -84,7 +53,7 @@ export const usePresenceStore = defineStore('presence', () => {
   const fetchActiveUsers = async (boardId: string) => {
     try {
       const token = authStore.getToken()
-      const result = await wsAPI.request<PresenceResponse>('presence:fetch', { boardId }, token)
+      const result = await wsAPI.request<PresenceResponse>('presence', 'fetch', ['presence'], { boardId }, token)
       activeUsers.value = result.users
     } catch (error) {
       console.error('Error fetching presence:', error)
@@ -106,17 +75,16 @@ export const usePresenceStore = defineStore('presence', () => {
     }
     
     if (currentBoardId) {
-      // Inline removeUserPresence logic
       try {
         const token = authStore.getToken()
-        await wsAPI.request('presence:remove', { boardId: currentBoardId }, token)
+        await wsAPI.request('presence', 'remove', ['presence'], { boardId: currentBoardId }, token)
       } catch (error) {
         console.error('Error removing user presence:', error)
       }
     }
     
     currentBoardId = null
-    lastPresenceState = null
+    lastEventData = null
   }
 
   const subscribeToNotifications = () => {
@@ -132,22 +100,17 @@ export const usePresenceStore = defineStore('presence', () => {
       }
     })
 
-    // Combined user left events
-    const handleUserLeft = (data: { userId: string; boardId: string }) => {
+    wsAPI.on('user:left', (data: { userId: string; boardId: string }) => {
       if (data.boardId === currentBoardId) {
         activeUsers.value = activeUsers.value.filter(u => u.user_id !== data.userId)
       }
-    }
-    
-    wsAPI.on('user:left', handleUserLeft)
-    wsAPI.on('presence:user_left', handleUserLeft)
+    })
   }
 
   const unsubscribeFromNotifications = () => {
     wsAPI.off('presence:updated')
     wsAPI.off('user:joined')
     wsAPI.off('user:left')
-    wsAPI.off('presence:user_left')
   }
 
   onUnmounted(() => {
@@ -163,7 +126,6 @@ export const usePresenceStore = defineStore('presence', () => {
     startPresenceTracking,
     stopPresenceTracking,
     subscribeToNotifications,
-    unsubscribeFromNotifications,
-    getPresenceEventCount
+    unsubscribeFromNotifications
   }
 })

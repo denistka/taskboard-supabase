@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import type { Task, UserPresence } from '@/types'
+import type { Task } from '@/types'
 import { TrashIcon } from '@/components/icons'
+import { usePresence } from '@/composables/usePresence'
 
 interface Props {
   task: Task
-  activeUsers: UserPresence[]
   currentUserId?: string
 }
 
@@ -16,23 +15,8 @@ const emit = defineEmits<{
   delete: []
 }>()
 
-// Check if this task is being edited by another user
-const isBeingEditedByOther = computed(() => {
-  return props.activeUsers.some(user => 
-    (user.event_data?.editingTaskId === props.task.id || 
-     (user.event_data?.currentAction && user.event_data?.actionTaskTitle === props.task.title)) && 
-    user.user_id !== props.currentUserId
-  )
-})
-
-// Get users editing this task
-const usersEditingThisTask = computed(() => {
-  return props.activeUsers.filter(user => 
-    (user.event_data?.editingTaskId === props.task.id || 
-     (user.event_data?.currentAction && user.event_data?.actionTaskTitle === props.task.title)) && 
-    user.user_id !== props.currentUserId
-  )
-})
+// Use universal presence system - listen for events on this specific task
+const { isBeingEditedByOther, eventUserNames } = usePresence(props.task.id, props.currentUserId)
 
 const formatDate = (date: string) => {
   return new Date(date).toLocaleDateString('en-US', {
@@ -66,7 +50,7 @@ const formatDate = (date: string) => {
       class="absolute top-2 right-2 flex items-center gap-1 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 px-2 py-1 rounded-full z-20"
     >
       <div class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-      <span>{{ usersEditingThisTask.map(u => u.profile?.full_name || u.profile?.email?.split('@')[0] || 'User').join(', ') }} editing</span>
+      <span>{{ eventUserNames }} editing</span>
     </div>
     <div class="flex items-start justify-between mb-3">
       <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 flex-1 pr-2 truncate" :title="task.title">
