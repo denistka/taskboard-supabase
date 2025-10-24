@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useAuthStore } from '@/stores/auth'
+import { useAuthStore } from '@/stores/auth-refactored'
 import { LoadingSpinnerIcon } from '@/components/icons'
 
 const authStore = useAuthStore()

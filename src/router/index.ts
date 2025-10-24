@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
+import { useAuthStore } from '@/stores/auth-refactored'
+import { api } from '@/lib/api'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -23,10 +24,16 @@ const router = createRouter({
   ],
 })
 
-// Initialize auth store and set up auth state change listener
+// Initialize WebSocket and auth store
 let authInitialized = false
 const initializeAuth = async () => {
   if (authInitialized) return
+  
+  // Ensure WebSocket is initialized first
+  if (!api.ws.isConnected) {
+    await api.ws.initialize()
+  }
+  
   const authStore = useAuthStore()
   await authStore.initialize()
   

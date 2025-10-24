@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, computed } from 'vue'
-import { useAuthStore } from '@/stores/auth'
-import { useTasksStore } from '@/stores/tasks'
-import { useBoardStore } from '@/stores/board'
+import { onMounted, onUnmounted, computed, ref, watch } from 'vue'
+import { useAuthStore } from '@/stores/auth-refactored'
+import { useTasksStore } from '@/stores/tasks-refactored'
+import { useBoardStore } from '@/stores/board-refactored'
 import TaskColumn from '@/components/TaskColumn.vue'
-import TaskDetails from '@/components/TaskDetails/Index.vue'
+import TaskDetails from '@/components/TaskDetails/Index-refactored.vue'
 import PageLayout from '@/components/PageLayout.vue'
 import type { Task, TaskStatus } from '@/types'
 
@@ -16,6 +16,9 @@ const currentUserId = computed(() => authStore.user?.id)
 
 // Presence data for components
 const presenceData = computed(() => tasksStore.getPresenceData())
+
+// Track the currently editing task to clear state on close
+const currentlyEditingTaskId = ref<string | null>(null)
 
 const handleCreateTask = async (status: TaskStatus, title: string, description: string) => {
   if (!boardStore.boardId) return
@@ -34,7 +37,12 @@ const handleDeleteTask = async (taskId: string) => {
   }
 }
 
-const handleTaskClick = (task: Task) => {
+const handleTaskClick = async (task: Task) => {
+  // Clear editing state when switching tasks
+  if (currentlyEditingTaskId.value && boardStore.boardId) {
+    await boardStore.stopEditing(boardStore.boardId, currentlyEditingTaskId.value)
+    currentlyEditingTaskId.value = null
+  }
   tasksStore.selectTask(task)
 }
 
@@ -80,10 +88,56 @@ const handleTaskDelete = async () => {
 
 const handleEditingStateChanged = async (isEditing: boolean, taskId?: string, fields?: string[]) => {
   if (!boardStore.boardId) return
+  
   try {
-    await boardStore.startEditing(boardStore.boardId, isEditing, taskId, fields)
+    if (isEditing && taskId && fields) {
+      // User is starting to edit
+      currentlyEditingTaskId.value = taskId
+      await boardStore.startEditing(boardStore.boardId, taskId, fields)
+    } else {
+      // User stopped editing - use the tracked taskId if none provided
+      const taskToStopEditing = taskId || currentlyEditingTaskId.value
+      if (taskToStopEditing) {
+        await boardStore.stopEditing(boardStore.boardId, taskToStopEditing)
+        currentlyEditingTaskId.value = null
+      }
+    }
   } catch (error) {
     console.error('Error updating editing state:', error)
+    // Show conflict error to user
+    if (error instanceof Error && error.message.includes('is already editing')) {
+      alert(error.message)
+      // Revert the form to original values
+      if (tasksStore.selectedTask) {
+        const refreshedTask = tasksStore.tasks.find(t => t.id === tasksStore.selectedTask?.id)
+        if (refreshedTask) {
+          tasksStore.selectTask(refreshedTask)
+        }
+      }
+    }
+  }
+}
+
+const handleDragStart = async (taskId: string) => {
+  if (!boardStore.boardId) return
+  try {
+    const task = tasksStore.tasks.find(t => t.id === taskId)
+    if (task) {
+      await boardStore.startDrag(taskId, task.title)
+    }
+  } catch (error) {
+    console.error('Error starting drag:', error)
+  }
+}
+
+const handleDragEnd = async (taskId: string) => {
+  // Don't call boardStore.endDrag here - it's called after moveTask completes
+  // Just clear the drag presence immediately
+  if (!boardStore.boardId) return
+  try {
+    await boardStore.clearDragPresence(taskId)
+  } catch (error) {
+    console.error('Error ending drag:', error)
   }
 }
 
@@ -109,6 +163,19 @@ const columnConfig = computed(() => [
   }
 ])
 
+
+// Watch for task panel closing to clear editing state
+watch(() => tasksStore.selectedTask, async (newTask, oldTask) => {
+  // If task panel was closed (oldTask exists but newTask is null)
+  if (oldTask && !newTask && currentlyEditingTaskId.value && boardStore.boardId) {
+    try {
+      await boardStore.stopEditing(boardStore.boardId, currentlyEditingTaskId.value)
+      currentlyEditingTaskId.value = null
+    } catch (error) {
+      console.error('Error clearing editing state on close:', error)
+    }
+  }
+})
 
 onMounted(() => {
   boardStore.initializeBoard()
@@ -147,6 +214,8 @@ onUnmounted(() => {
               @task-click="handleTaskClick"
               @task-moved="handleTaskMoved"
               @editing-state-changed="handleEditingStateChanged"
+              @drag-start="handleDragStart"
+              @drag-end="handleDragEnd"
             />
           </div>
         </div>

@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, watchEffect } from 'vue'
+import { ref, computed } from 'vue'
 import type { Task, UserPresence } from '@/types'
 import TaskDetailsHeader from './TaskDetailsHeader.vue'
-import TaskDetailsForm from './TaskDetailsForm.vue'
+import TaskDetailsForm from './TaskDetailsForm-refactored.vue'
 import TaskDetailsMetadata from './TaskDetailsMetadata.vue'
 import TaskDetailsActions from './TaskDetailsActions.vue'
 
@@ -21,6 +21,8 @@ const emit = defineEmits<{
   delete: []
   editingStateChanged: [isEditing: boolean, taskId?: string, fields?: string[]]
 }>()
+
+import { watchEffect } from 'vue'
 
 // Track if task is being deleted to use faster transition
 const isDeleting = ref(false)
@@ -146,4 +148,3 @@ watchEffect(() => {
   opacity: 0;
 }
 </style>
-

@@ -24,6 +24,8 @@ const emit = defineEmits<{
   taskClick: [task: Task]
   taskMoved: [taskId: string, newStatus: TaskStatus, newPosition: number]
   editingStateChanged: [isEditing: boolean, taskId?: string, fields?: string[]]
+  dragStart: [taskId: string]
+  dragEnd: [taskId: string]
 }>()
 
 const isCreating = ref(false)
@@ -77,6 +79,12 @@ onMounted(() => {
         onStart: (evt) => {
           // Ensure drag element has highest z-index
           evt.item.style.zIndex = '9999'
+          
+          // Emit drag start event for presence tracking
+          const taskId = evt.item.dataset.taskId
+          if (taskId) {
+            emit('dragStart', taskId)
+          }
         },
         onEnd: (evt) => {
           const taskId = evt.item.dataset.taskId
@@ -85,6 +93,8 @@ onMounted(() => {
 
           if (taskId && newStatus) {
             emit('taskMoved', taskId, newStatus, newPosition)
+            // Emit drag end event for presence tracking
+            emit('dragEnd', taskId)
           }
         },
       })
@@ -96,7 +106,7 @@ onMounted(() => {
 <template>
   <div ref="columnRef" class="flex-1 min-w-[320px] max-w-[400px] flex flex-col relative z-30 h-full w-[320px] flex-shrink-0">
     <!-- Fixed Header -->
-    <div class="z-10 bg-white/30 dark:bg-gray-900/30 backdrop-blur-xl border border-white/20 dark:border-gray-700/30 rounded-2xl p-4 border-t-4 relative z-10 flex-shrink-0 shadow-lg" :class="`border-t-${color}-500`">
+    <div class="z-10 bg-white/30 dark:bg-gray-900/30 backdrop-blur-xl border border-white/20 dark:border-gray-700/30 rounded-2xl p-4 border-t-4 relative flex-shrink-0 shadow-lg" :class="`border-t-${color}-500`">
       <div class="flex items-center justify-between mb-2">
         <div class="flex items-center gap-3">
           <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">

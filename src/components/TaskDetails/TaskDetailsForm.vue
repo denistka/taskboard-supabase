@@ -56,14 +56,14 @@ watch(() => props.task, () => {
   }
 }, { immediate: true })
 
-// Track editing state changes
+// Track editing state changes - use sync flush for immediate updates
 watch(isEditing, (newIsEditing) => {
   if (props.task && newIsEditing) {
     emit('editingStateChanged', true, props.task.id, editingFields.value)
   } else if (props.task && !newIsEditing) {
     emit('editingStateChanged', false)
   }
-})
+}, { flush: 'sync' })
 
 const saveChanges = async () => {
   if (!props.task) return

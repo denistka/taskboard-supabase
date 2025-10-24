@@ -26,6 +26,36 @@ class WebSocketAPI {
   }
 
   /**
+   * Wait for WebSocket to be connected
+   */
+  async waitForConnection(): Promise<void> {
+    if (this.connected) return
+    
+    return new Promise((resolve, reject) => {
+      if (!this.socket) {
+        reject(new Error('WebSocket not initialized'))
+        return
+      }
+      
+      // Listen for connect event
+      const onConnect = () => {
+        this.socket?.off('connect', onConnect)
+        this.socket?.off('connect_error', onError)
+        resolve()
+      }
+      
+      const onError = (err: Error) => {
+        this.socket?.off('connect', onConnect)
+        this.socket?.off('connect_error', onError)
+        reject(err)
+      }
+      
+      this.socket.once('connect', onConnect)
+      this.socket.once('connect_error', onError)
+    })
+  }
+
+  /**
    * Reconnect with new token after authentication
    */
   async reconnectWithToken(token: string): Promise<void> {

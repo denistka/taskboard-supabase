@@ -11,6 +11,32 @@ export interface Profile {
   avatar_url: string | null
 }
 
+export interface User {
+  id: string
+  email: string
+  created_at: string
+  updated_at: string
+  app_metadata: Record<string, any>
+  user_metadata: Record<string, any>
+  aud: string
+  confirmation_sent_at?: string
+  recovery_sent_at?: string
+  email_change_sent_at?: string
+  new_email?: string
+  invited_at?: string
+  action_link?: string
+  email_confirmed_at?: string
+  phone_confirmed_at?: string
+  confirmed_at?: string
+  email_change_confirm_status?: number
+  banned_until?: string
+  reauthentication_sent_at?: string
+  reauthentication_confirm_status?: number
+  is_sso_user?: boolean
+  deleted_at?: string
+  is_anonymous?: boolean
+}
+
 export interface Task {
   id: string
   board_id: string
@@ -106,7 +132,7 @@ export interface PresenceUpdatePayload {
 
 // WebSocket Response Types
 export interface AuthResponse {
-  user: any // User type from @supabase/supabase-js
+  user: User
   token: string
 }
 
@@ -138,4 +164,25 @@ export type WSNotificationType =
   | 'presence:user_editing'
   | 'user:joined'
   | 'user:left'
+
+// ============================================
+// API Layer Types
+// ============================================
+
+export type RequestType = 
+  | 'auth' 
+  | 'db' 
+  | 'presence' 
+  | 'presence:all'
+  | ['auth', 'presence'] 
+  | ['auth', 'presence:all']
+  | ['db', 'presence'] 
+  | ['db', 'presence:all']
+
+export interface SendRequestOptions {
+  eventId: string
+  type: RequestType
+  token?: string | null
+  payload?: Record<string, any>
+}
 

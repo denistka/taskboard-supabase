@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
-import { useTasksStore } from '@/stores/tasks'
+import { useAuthStore } from '@/stores/auth-refactored'
+import { useTasksStore } from '@/stores/tasks-refactored'
 import PresenceIndicator from '@/components/PresenceIndicator.vue'
 import ThemeSwitcher from '@/components/ThemeSwitcher.vue'
 import { ArrowLeftIcon, SignOutIcon } from '@/components/icons'
@@ -103,7 +103,6 @@ const layoutConfig = {
     :class="[
       'z-10',
       headerConfig.position === 'fixed' ? 'fixed top-0 left-0 right-0 w-full' : '',
-      headerConfig.position === 'absolute' ? 'absolute top-0 left-0 right-0' : '',
       headerConfig.position === 'static' ? 'static' : '',
       headerConfig.background 
         ? 'glass-effect border-b border-white/20 dark:border-gray-700/30 shadow-sm'
