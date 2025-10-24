@@ -4,7 +4,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useThemeStore } from '@/stores/theme'
 import { wsAPI } from '@/lib/websocket'
 import AppHeader from '@/components/AppHeader.vue'
-import DecorativeBackground from '@/components/DecorativeBackground/Index.vue'
+import DecorativeBackground from '@/components/DecorativeBackground/index.vue'
 
 const authStore = useAuthStore()
 useThemeStore()

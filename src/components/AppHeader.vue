@@ -103,7 +103,6 @@ const layoutConfig = {
     :class="[
       'z-10',
       headerConfig.position === 'fixed' ? 'fixed top-0 left-0 right-0 w-full' : '',
-      headerConfig.position === 'absolute' ? 'absolute top-0 left-0 right-0' : '',
       headerConfig.position === 'static' ? 'static' : '',
       headerConfig.background 
         ? 'glass-effect border-b border-white/20 dark:border-gray-700/30 shadow-sm'
