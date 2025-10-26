@@ -53,7 +53,7 @@ export async function handleRequest(socket, data, callback) {
         break
         
       case 'board:get':
-        result = await boardHandlers.handleBoardGet(socket, payload)
+        result = await boardHandlers.handleBoardGet(socket, payload, user)
         break
         
       case 'board:join':

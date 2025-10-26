@@ -2,12 +2,13 @@ import { createClient } from '@supabase/supabase-js'
 import { config } from '../config.js'
 import { presenceManager } from '../presence.js'
 
-const supabase = createClient(config.supabase.url, config.supabase.serviceKey)
-
 export async function handleBoardGetOrCreate(socket, payload, user) {
   if (!user) {
     throw new Error('Not authenticated')
   }
+  
+  // Use service key client for operations that need to bypass RLS
+  const supabase = createClient(config.supabase.url, config.supabase.serviceKey)
   
   // Try to get existing board
   const { data: existingBoard, error: fetchError } = await supabase
@@ -22,7 +23,7 @@ export async function handleBoardGetOrCreate(socket, payload, user) {
     return { board: existingBoard }
   }
   
-  // Create new board
+  // Create new board using service key (bypasses RLS)
   const { data: newBoard, error: insertError } = await supabase
     .from('boards')
     .insert({
@@ -38,8 +39,11 @@ export async function handleBoardGetOrCreate(socket, payload, user) {
   return { board: newBoard }
 }
 
-export async function handleBoardGet(socket, payload) {
+export async function handleBoardGet(socket, payload, user) {
   const { boardId } = payload
+  
+  // Use service key client for operations that need to bypass RLS
+  const supabase = createClient(config.supabase.url, config.supabase.serviceKey)
   
   const { data: board, error } = await supabase
     .from('boards')

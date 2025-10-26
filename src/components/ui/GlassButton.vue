@@ -57,9 +57,9 @@ const colorPalette = {
 // Size configuration
 const sizeConfig = {
   xs: { padding: 'px-3 py-1.5', text: 'text-xs', radius: 'rounded-xl' },
-  sm: { padding: 'px-4 py-2', text: 'text-sm', radius: 'rounded-xl' },
-  md: { padding: 'px-6 py-3', text: 'text-base', radius: 'rounded-2xl' },
-  lg: { padding: 'px-8 py-4', text: 'text-lg', radius: 'rounded-2xl' }
+  sm: { padding: 'px-5 py-1.5', text: 'text-sm', radius: 'rounded-[0.9rem]' },
+  md: { padding: 'px-5 py-2', text: 'text-base', radius: 'rounded-[1.1rem]' },
+  lg: { padding: 'px-6 py-2', text: 'text-lg', radius: 'rounded-[1.25rem]' }
 }
 
 // Computed classes
@@ -182,8 +182,9 @@ onMounted(setColorVariables)
   box-shadow: 
     0 0 15px rgba(var(--glass-accent), 0.3),
     0 0 30px rgba(var(--glass-accent), 0.15),
-    0 4px 16px rgba(0, 0, 0, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+    0 4px 16px rgba(var(--glass-primary), 0.2),
+    0 8px 32px rgba(var(--glass-secondary), 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
 /* Dark Theme Neon Override */
@@ -191,7 +192,8 @@ onMounted(setColorVariables)
   box-shadow: 
     0 0 15px rgba(var(--glass-accent), 0.3),
     0 0 30px rgba(var(--glass-accent), 0.15),
-    0 4px 16px rgba(0, 0, 0, 0.4),
+    0 4px 16px rgba(var(--glass-primary), 0.2),
+    0 8px 32px rgba(var(--glass-secondary), 0.15),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
@@ -205,7 +207,8 @@ onMounted(setColorVariables)
   box-shadow: 
     0 0 15px rgba(var(--glass-accent), 0.3),
     0 0 30px rgba(var(--glass-accent), 0.15),
-    0 4px 16px rgba(0, 0, 0, 0.4),
+    0 4px 16px rgba(var(--glass-primary), 0.2),
+    0 8px 32px rgba(var(--glass-secondary), 0.15),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
@@ -213,7 +216,7 @@ onMounted(setColorVariables)
   background: linear-gradient(
     90deg,
     transparent 0%,
-    rgba(var(--glass-accent), 0.6) 50%,
+    rgba(var(--glass-accent), 0.25) 50%,
     transparent 100%
   );
   animation: shimmer 2s infinite;
@@ -224,7 +227,8 @@ onMounted(setColorVariables)
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
   box-shadow: 
-    0 4px 16px rgba(0, 0, 0, 0.2),
+    0 4px 16px rgba(var(--glass-primary), 0.15),
+    0 8px 32px rgba(var(--glass-secondary), 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
