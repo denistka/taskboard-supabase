@@ -1,16 +1,17 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuth } from '../composables/useAuth'
 import { useProfile } from '../composables/useProfile'
-import PageContainer from '../components/Page/PageContainer.vue'
+import { useToast } from '../composables/useToast'
+import AppLayout from '../components/AppLayout.vue'
 import PageHeader from '../components/Page/PageHeader.vue'
 import GlassButton from '../components/GlassButton.vue'
 import { GlassCard, GlassInput, GlassAvatar } from '../components/glass-ui'
+import { IconArrowLeft } from '../components/icons'
 
 const router = useRouter()
-const { signOut } = useAuth()
 const { profile, stats, loading, error, fetchProfile, updateProfile, fetchStats } = useProfile()
+const toast = useToast()
 
 const firstName = ref('')
 const lastName = ref('')
@@ -53,13 +54,13 @@ const handleFileUpload = (event: Event) => {
   
   // Validate file type
   if (!file.type.startsWith('image/')) {
-    alert('Please select an image file')
+    toast.error('Please select an image file')
     return
   }
   
   // Validate file size (max 2MB)
   if (file.size > 2 * 1024 * 1024) {
-    alert('Image size must be less than 2MB')
+    toast.error('Image size must be less than 2MB')
     return
   }
   
@@ -72,7 +73,7 @@ const handleFileUpload = (event: Event) => {
     imageError.value = false
   }
   reader.onerror = () => {
-    alert('Failed to read file')
+    toast.error('Failed to read file')
   }
   reader.readAsDataURL(file)
 }
@@ -86,27 +87,28 @@ const handleSaveProfile = async () => {
       avatar_url: avatarUrl.value || undefined
     })
     await fetchStats() // Refresh stats after update
+    toast.success('Profile updated successfully')
   } catch (err: any) {
     console.error('Failed to update profile:', err)
+    toast.error(err.message || 'Failed to update profile')
   }
-}
-
-const handleSignOut = async () => {
-  await signOut()
-  router.push('/')
 }
 </script>
 
 <template>
-  <PageContainer>
+  <AppLayout>
     <div class="min-h-screen">
       <PageHeader title="Profile">
         <template #right>
-          <GlassButton @click="$router.push('/boards')" color="blue" size="md" variant="basic">
-            My Boards
-          </GlassButton>
-          <GlassButton @click="handleSignOut" color="red" size="md" variant="shimmer">
-            Sign Out
+          <GlassButton 
+            @click="$router.push('/boards')" 
+            color="blue" 
+            size="md" 
+            variant="basic"
+            title="Back to Boards"
+            aria-label="Back to Boards"
+          >
+            <IconArrowLeft :size="20" />
           </GlassButton>
         </template>
       </PageHeader>
@@ -184,5 +186,5 @@ const handleSignOut = async () => {
         </GlassCard>
       </div>
     </div>
-  </PageContainer>
+  </AppLayout>
 </template>

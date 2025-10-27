@@ -52,6 +52,7 @@ const emit = defineEmits<Emits>()
         size="xs"
         variant="neon"
         title="Open Board"
+        aria-label="Open board"
       >
         <IconExternalLink :size="14" />
       </GlassButton>
@@ -64,6 +65,7 @@ const emit = defineEmits<Emits>()
         size="xs"
         variant="neon"
         title="Edit"
+        aria-label="Edit board"
       >
         <IconEdit :size="14" />
       </GlassButton>
@@ -77,6 +79,7 @@ const emit = defineEmits<Emits>()
         :variant="board.pending_requests ? 'shimmer' : 'neon'"
         class="relative"
         title="View Requests"
+        :aria-label="board.pending_requests ? `View ${board.pending_requests} pending requests` : 'View join requests'"
       >
         <IconBell :size="14" />
         <span v-if="board.pending_requests" class="absolute -top-1 -right-1 text-white text-[10px] font-bold">
@@ -92,6 +95,7 @@ const emit = defineEmits<Emits>()
         size="xs"
         variant="neon"
         title="Delete"
+        aria-label="Delete board"
       >
         <IconTrash :size="14" />
       </GlassButton>
@@ -104,6 +108,7 @@ const emit = defineEmits<Emits>()
         size="xs"
         variant="neon"
         title="Leave Board"
+        aria-label="Leave board"
       >
         <IconLogout :size="14" />
       </GlassButton>
@@ -117,6 +122,7 @@ const emit = defineEmits<Emits>()
         :variant="board.has_pending_request ? 'shimmer' : 'neon'"
         :disabled="board.has_pending_request"
         :title="board.has_pending_request ? 'Request Pending' : 'Request to Join'"
+        :aria-label="board.has_pending_request ? 'Join request pending' : 'Request to join board'"
       >
         <IconUserPlus v-if="!board.has_pending_request" :size="14" />
         <IconClock v-else :size="14" />

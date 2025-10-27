@@ -1,14 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useAuth } from '../composables/useAuth'
 import { useTasks } from '../composables/useTasks'
 import { useBoard } from '../composables/useBoard'
-import { usePresence } from '../composables/usePresence'
-import PageContainer from '../components/Page/PageContainer.vue'
+import BoardLayout from '../components/BoardLayout.vue'
 import PageHeader from '../components/Page/PageHeader.vue'
 import TaskColumn from '../components/TaskColumn.vue'
-import BoardPresenceIndicator from '../components/BoardPresenceIndicator.vue'
+import SkeletonList from '../components/SkeletonList.vue'
 import { IconArrowLeft, IconClose } from '../components/icons'
 import { GlassInput } from '../components/glass-ui'
 import GlassButton from '../components/GlassButton.vue'
@@ -16,10 +14,8 @@ import type { Task, TaskStatus } from '../../../shared/types'
 
 const router = useRouter()
 const route = useRoute()
-const { signOut } = useAuth()
-const { currentBoard, join, leave, subscribeToEvents: subscribeBoardEvents, unsubscribeFromEvents: unsubscribeBoardEvents } = useBoard()
+const { currentBoard, join, subscribeToEvents: subscribeBoardEvents, unsubscribeFromEvents: unsubscribeBoardEvents } = useBoard()
 const { todoTasks, inProgressTasks, doneTasks, loading, selectedTask, fetch, create, update, remove, subscribeToEvents: subscribeToTasksEvents, unsubscribeFromEvents: unsubscribeFromTasksEvents } = useTasks()
-const { activeUsers, fetch: fetchPresence, subscribeToEvents: subscribePresenceEvents, unsubscribeFromEvents: unsubscribePresenceEvents } = usePresence()
 
 const searchQuery = ref('')
 let searchTimeout: ReturnType<typeof setTimeout> | null = null
@@ -38,11 +34,9 @@ onMounted(async () => {
     // Subscribe to events BEFORE joining to catch all broadcasts
     subscribeToTasksEvents()
     subscribeBoardEvents()
-    subscribePresenceEvents()
 
     await join(boardId)
     await fetch(boardId)
-    await fetchPresence(boardId)
   } catch (err) {
     console.error('Board init error:', err)
     router.push('/boards')
@@ -50,18 +44,9 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
-  if (currentBoardId) {
-    try {
-      leave(currentBoardId)
-    } catch (err) {
-      console.error('[BoardView] Error leaving board:', err)
-    }
-    currentBoardId = null
-  }
-
   unsubscribeFromTasksEvents()
   unsubscribeBoardEvents()
-  unsubscribePresenceEvents()
+  currentBoardId = null
 })
 
 const handleSearch = () => {
@@ -72,15 +57,6 @@ const handleSearch = () => {
     // TODO: Implement search via useTasks composable
     console.log('Search:', searchQuery.value, 'Board:', boardId)
   }, 300)
-}
-
-const handleSignOut = async () => {
-  // Leave board before signing out to update presence
-  if (currentBoard.value) {
-    await leave(currentBoard.value.id)
-  }
-  await signOut()
-  router.push('/')
 }
 
 const handleTaskClick = (task: Task) => {
@@ -142,11 +118,18 @@ const handleTaskMoved = async (taskId: string, newStatus: string, newPosition: n
 </script>
 
 <template>
-  <PageContainer>
+  <BoardLayout :board-id="route.params.id as string">
     <div class="min-h-screen">
       <PageHeader :title="currentBoard?.name || 'Task Board'">
         <template #left>
-          <GlassButton @click="$router.push('/boards')" color="blue" size="md" variant="basic" title="Back to Boards">
+          <GlassButton 
+            @click="$router.push('/boards')" 
+            color="blue" 
+            size="md" 
+            variant="basic" 
+            title="Back to Boards"
+            aria-label="Back to Boards"
+          >
             <IconArrowLeft :size="20" />
           </GlassButton>
         </template>
@@ -162,20 +145,11 @@ const handleTaskMoved = async (taskId: string, newStatus: string, newPosition: n
           </div>
         </template>
 
-        <template #right>
-          <BoardPresenceIndicator :activeUsers="activeUsers" />
-          <GlassButton @click="handleSignOut" color="red" size="md" variant="shimmer">
-            Sign Out
-          </GlassButton>
-        </template>
       </PageHeader>
 
       <!-- Content -->
       <div class="p-6">
-        <div v-if="loading" class="loading-screen-centered-column py-20">
-          <div class="loading-spinner-primary mb-4"></div>
-          <p class="text-gray-600 dark:text-gray-400">Loading board...</p>
-        </div>
+        <SkeletonList v-if="loading" variant="board" :columns="3" :items-per-column="3" />
 
         <div v-else class="flex gap-6 overflow-x-auto pb-6">
           <TaskColumn
@@ -214,14 +188,20 @@ const handleTaskMoved = async (taskId: string, newStatus: string, newPosition: n
           <!-- Header -->
           <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
             <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Task Details</h2>
-            <GlassButton @click="selectedTask = null" color="blue" size="sm" variant="basic">
+            <GlassButton 
+              @click="selectedTask = null" 
+              color="blue" 
+              size="sm" 
+              variant="basic"
+              aria-label="Close task details"
+            >
               <IconClose :size="16" />
             </GlassButton>
           </div>
 
           <!-- Content -->
           <div class="p-6">
-            <form @submit.prevent="handleTaskSubmit('todo', taskTitle.value, taskDescription.value)">
+            <form @submit.prevent="handleTaskSubmit('todo', taskTitle, taskDescription)">
               <div class="space-y-4">
                 <div>
                   <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Title</label>
@@ -234,10 +214,23 @@ const handleTaskMoved = async (taskId: string, newStatus: string, newPosition: n
                 </div>
 
                 <div class="flex gap-2">
-                  <GlassButton type="submit" color="purple" size="md" variant="shimmer">
+                  <GlassButton 
+                    type="submit" 
+                    color="purple" 
+                    size="md" 
+                    variant="shimmer"
+                    aria-label="Save task changes"
+                  >
                     Save Changes
                   </GlassButton>
-                  <GlassButton type="button" @click="handleTaskDelete" color="red" size="md" variant="shimmer">
+                  <GlassButton 
+                    type="button" 
+                    @click="handleTaskDelete" 
+                    color="red" 
+                    size="md" 
+                    variant="shimmer"
+                    aria-label="Delete task"
+                  >
                     Delete
                   </GlassButton>
                 </div>
@@ -256,7 +249,7 @@ const handleTaskMoved = async (taskId: string, newStatus: string, newPosition: n
         />
       </Transition>
     </div>
-  </PageContainer>
+  </BoardLayout>
 </template>
 
 <style scoped>

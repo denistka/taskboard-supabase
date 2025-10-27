@@ -1,11 +1,10 @@
 import type { BoardPresence, Profile } from '../../../shared/types.js'
 import { BasePresenceManager } from './BasePresenceManager.js'
-import { createClient } from '@supabase/supabase-js'
-import { config } from '../config.js'
 
 export class BoardPresenceManager extends BasePresenceManager<string> {
+  private static readonly MAX_PROFILE_CACHE = 5000
+  
   private profiles = new Map<string, Profile>()
-  private supabase = createClient(config.supabase.url, config.supabase.serviceKey)
 
   add(socketId: string, user: any, boardId: string, eventData = {}): BoardPresence[] {
     super.add(socketId, user, boardId, eventData)
@@ -24,6 +23,7 @@ export class BoardPresenceManager extends BasePresenceManager<string> {
   remove(socketId: string): { boardId: string; users: BoardPresence[] } | null {
     const boardId = this.getUserContext(socketId)
     const userId = super.remove(socketId)
+    this.cleanupProfiles()
     
     return boardId && userId ? { boardId, users: this.getByBoard(boardId) } : null
   }
@@ -31,12 +31,39 @@ export class BoardPresenceManager extends BasePresenceManager<string> {
   forceRemove(socketId: string): { boardId: string; users: BoardPresence[] } | null {
     const boardId = this.getUserContext(socketId)
     const userId = super.forceRemove(socketId)
+    this.cleanupProfiles()
     
     return boardId && userId ? { boardId, users: this.getByBoard(boardId) } : null
   }
 
   getByBoard(boardId: string): BoardPresence[] {
     return this.getByContext(boardId).map(this.toPresence)
+  }
+
+  destroy(): void {
+    super.destroy()
+    this.profiles.clear()
+  }
+
+  private cleanupProfiles(): void {
+    // Remove profiles not in active presence
+    const activeUserIds = new Set(this.getAll().map(p => p.user.id))
+    const profilesToRemove: string[] = []
+    
+    this.profiles.forEach((_, userId) => {
+      if (!activeUserIds.has(userId)) {
+        profilesToRemove.push(userId)
+      }
+    })
+    
+    profilesToRemove.forEach(userId => this.profiles.delete(userId))
+    
+    // Emergency capacity limit
+    if (this.profiles.size > BoardPresenceManager.MAX_PROFILE_CACHE) {
+      const excess = this.profiles.size - BoardPresenceManager.MAX_PROFILE_CACHE
+      const keys = Array.from(this.profiles.keys())
+      keys.slice(0, excess).forEach(key => this.profiles.delete(key))
+    }
   }
 
   private async fetchProfile(userId: string) {

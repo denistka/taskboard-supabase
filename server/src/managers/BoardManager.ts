@@ -57,22 +57,33 @@ export class BoardManager extends BaseManager {
     
     const userRequestsMap = new Set(userRequests?.map(r => r.board_id) || [])
 
-    // Add pending request counts for owners and check user's requests
-    for (const board of boards) {
-      // Add count for owners
-      if (board.role === 'owner') {
-        const { count } = await this.supabase
-          .from('join_requests')
-          .select('*', { count: 'exact', head: true })
-          .eq('board_id', board.id)
-          .eq('status', 'pending')
-        board.pending_requests = count || 0
-      }
-      // Check if user has pending request to this board
-      board.has_pending_request = userRequestsMap.has(board.id)
+    // Batch query: Get pending request counts for all owned boards
+    const ownedBoards = boards.filter(b => b.role === 'owner')
+    const ownedBoardIds = ownedBoards.map(b => b.id)
+    
+    let countsMap = new Map<string, number>()
+    if (ownedBoardIds.length > 0) {
+      const { data: requests } = await this.supabase
+        .from('join_requests')
+        .select('board_id')
+        .in('board_id', ownedBoardIds)
+        .eq('status', 'pending')
+      
+      // Build count map
+      requests?.forEach(req => {
+        const current = countsMap.get(req.board_id) || 0
+        countsMap.set(req.board_id, current + 1)
+      })
     }
 
-    return boards
+    // Apply counts and user's pending requests
+    return boards.map(board => ({
+      ...board,
+      pending_requests: board.role === 'owner' 
+        ? (countsMap.get(board.id) || 0) 
+        : undefined,
+      has_pending_request: userRequestsMap.has(board.id)
+    }))
   }
 
   // Update board

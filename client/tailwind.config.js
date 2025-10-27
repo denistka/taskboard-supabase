@@ -53,6 +53,33 @@ export default {
           1000: '#050709',
         }
       },
+      spacing: {
+        '18': '4.5rem',
+        '88': '22rem',
+        '112': '28rem',
+        '128': '32rem',
+      },
+      borderRadius: {
+        '4xl': '2rem',
+        '5xl': '2.5rem',
+      },
+      boxShadow: {
+        'glass': '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
+        'glass-lg': '0 12px 48px 0 rgba(0, 0, 0, 0.45)',
+        'glass-xl': '0 20px 60px 0 rgba(0, 0, 0, 0.55)',
+        'neon': '0 0 10px rgba(99, 102, 241, 0.5), 0 0 20px rgba(99, 102, 241, 0.3)',
+        'neon-lg': '0 0 20px rgba(99, 102, 241, 0.6), 0 0 40px rgba(99, 102, 241, 0.4)',
+      },
+      fontSize: {
+        'fluid-xs': 'clamp(0.75rem, 1vw, 0.875rem)',
+        'fluid-sm': 'clamp(0.875rem, 1.2vw, 1rem)',
+        'fluid-base': 'clamp(1rem, 1.5vw, 1.125rem)',
+        'fluid-lg': 'clamp(1.125rem, 2vw, 1.25rem)',
+        'fluid-xl': 'clamp(1.25rem, 2.5vw, 1.5rem)',
+        'fluid-2xl': 'clamp(1.5rem, 3vw, 2rem)',
+        'fluid-3xl': 'clamp(2rem, 4vw, 2.5rem)',
+        'fluid-4xl': 'clamp(2.5rem, 5vw, 3.5rem)',
+      },
       backgroundImage: {
         'gradient-primary': 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
         'gradient-dark': 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
@@ -60,6 +87,7 @@ export default {
       animation: {
         'slide-in': 'slideIn 0.3s ease-out',
         'fade-in': 'fadeIn 0.2s ease-out',
+        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
       },
       keyframes: {
         slideIn: {

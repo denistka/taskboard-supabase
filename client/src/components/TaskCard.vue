@@ -1,8 +1,11 @@
 <template>
   <div 
-    class="card-glass-strong-rounded-2xl p-4 cursor-pointer transition-all duration-300 group hover-lift-scale border-l-4 m-1 relative overflow-hidden shadow-md"
+    class="card-glass-strong-rounded-2xl p-4 cursor-grab active:cursor-grabbing transition-all duration-300 group hover-lift-scale border-l-4 m-1 relative overflow-hidden shadow-md"
     :class="statusColorClass"
+    draggable="true"
     @click="$emit('click')"
+    @dragstart="$emit('dragstart', $event)"
+    @dragend="$emit('dragend', $event)"
   >
     <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2 truncate">
       {{ task.title }}
@@ -32,6 +35,8 @@ const props = defineProps<{
 
 defineEmits<{
   click: []
+  dragstart: [event: DragEvent]
+  dragend: [event: DragEvent]
 }>()
 
 const statusColorClass = computed(() => {

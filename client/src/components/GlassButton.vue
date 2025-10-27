@@ -2,12 +2,14 @@
   <button
     :class="buttonClasses"
     :style="buttonStyles"
-    :disabled="disabled"
+    :disabled="disabled || loading"
     v-bind="$attrs"
     @click="$emit('click', $event)"
   >
-    <span class="relative z-10">
-      <slot />
+    <span class="relative z-10 flex items-center justify-center gap-2">
+      <span v-if="loading" class="loading-spinner" :class="spinnerSize"></span>
+      <slot v-if="!loading" />
+      <span v-if="loading">{{ loadingText || 'Loading...' }}</span>
     </span>
   </button>
 </template>
@@ -20,6 +22,8 @@ interface GlassButtonProps {
   color?: 'purple' | 'blue' | 'cyan' | 'green' | 'yellow' | 'orange' | 'red' | 'pink' | 'magenta' | 'lime'
   size?: 'xs' | 'sm' | 'md' | 'lg'
   disabled?: boolean
+  loading?: boolean
+  loadingText?: string
   layout?: 'inline' | 'stacked'
 }
 
@@ -32,10 +36,22 @@ const props = withDefaults(defineProps<GlassButtonProps>(), {
   color: 'blue',
   size: 'xs',
   disabled: false,
+  loading: false,
+  loadingText: '',
   layout: 'inline'
 })
 
 const emit = defineEmits<GlassButtonEmits>()
+
+const spinnerSize = computed(() => {
+  switch (props.size) {
+    case 'xs': return 'w-3 h-3'
+    case 'sm': return 'w-4 h-4'
+    case 'md': return 'w-5 h-5'
+    case 'lg': return 'w-6 h-6'
+    default: return 'w-4 h-4'
+  }
+})
 
 const colorPalette = {
   purple: { primary: [147, 51, 234], secondary: [124, 58, 237], tertiary: [109, 40, 217], accent: [168, 85, 247] },
@@ -51,10 +67,10 @@ const colorPalette = {
 }
 
 const sizeConfig = {
-  xs: { padding: 'px-2 py-1', text: 'text-xs', radius: 'rounded-lg' },
-  sm: { padding: 'px-5 py-1.5', text: 'text-sm', radius: 'rounded-[0.9rem]' },
-  md: { padding: 'px-5 py-2', text: 'text-base', radius: 'rounded-[1.1rem]' },
-  lg: { padding: 'px-6 py-2', text: 'text-lg', radius: 'rounded-[1.25rem]' }
+  xs: { padding: 'px-3 py-2.5 md:px-2 md:py-1', text: 'text-xs', radius: 'rounded-lg' },
+  sm: { padding: 'px-5 py-2.5 md:py-1.5', text: 'text-sm', radius: 'rounded-[0.9rem]' },
+  md: { padding: 'px-5 py-3 md:py-2', text: 'text-base', radius: 'rounded-[1.1rem]' },
+  lg: { padding: 'px-6 py-3 md:py-2', text: 'text-lg', radius: 'rounded-[1.25rem]' }
 }
 
 const buttonClasses = computed(() => {
@@ -215,5 +231,20 @@ const buttonStyles = computed(() => {
 @keyframes shimmer {
   0% { transform: translateX(-100%); }
   100% { transform: translateX(100%); }
+}
+
+/* Loading spinner */
+.loading-spinner {
+  border: 2px solid transparent;
+  border-top-color: currentColor;
+  border-right-color: currentColor;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 </style>

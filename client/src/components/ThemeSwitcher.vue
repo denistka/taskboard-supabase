@@ -7,13 +7,14 @@ const { isDark, toggle } = useTheme()
 <template>
   <button
     @click="toggle"
-    class="button-icon-rounded-glass"
+    class="fixed top-4 right-4 z-[9999] w-6 h-6 rounded-full bg-white/10 dark:bg-white/5 backdrop-blur-lg border border-white/20 dark:border-white/10 hover:bg-white/20 dark:hover:bg-white/10 transition-all duration-200 flex items-center justify-center shadow-lg hover:scale-110"
     :title="isDark ? 'Switch to light mode' : 'Switch to dark mode'"
+    aria-label="Toggle theme"
   >
     <!-- Sun Icon for Dark Mode -->
     <svg 
       v-if="isDark" 
-      class="w-6 h-6 text-yellow-400" 
+      class="w-3 h-3 text-yellow-400" 
       fill="none" 
       stroke="currentColor" 
       viewBox="0 0 24 24"
@@ -29,7 +30,7 @@ const { isDark, toggle } = useTheme()
     <!-- Moon Icon for Light Mode -->
     <svg 
       v-else 
-      class="w-6 h-6 text-gray-700" 
+      class="w-3 h-3 text-gray-700 dark:text-gray-300" 
       fill="none" 
       stroke="currentColor" 
       viewBox="0 0 24 24"

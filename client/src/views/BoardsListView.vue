@@ -1,20 +1,19 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAuth } from '../composables/useAuth'
 import { useBoards } from '../composables/useBoards'
-import { useAppPresence } from '../composables/useAppPresence'
-import PageContainer from '../components/Page/PageContainer.vue'
+import { useToast } from '../composables/useToast'
+import AppLayout from '../components/AppLayout.vue'
 import PageHeader from '../components/Page/PageHeader.vue'
 import BoardCard from '../components/BoardCard.vue'
 import GlassButton from '../components/GlassButton.vue'
-import AppPresenceIndicator from '../components/AppPresenceIndicator.vue'
+import SkeletonList from '../components/SkeletonList.vue'
+import { IconPlus } from '../components/icons'
 import type { BoardWithRole } from '../../../shared/types'
 
 const router = useRouter()
-const { signOut } = useAuth()
 const { boards, list, create, update, remove, requestJoin, leave, approveJoin, rejectJoin, listRequests } = useBoards()
-const { onlineUsers, fetch: fetchAppPresence, leave: leaveAppPresence, subscribeToEvents: subscribeAppPresence, unsubscribeFromEvents: unsubscribeAppPresence } = useAppPresence()
+const toast = useToast()
 
 const loading = ref(true)
 const showCreateModal = ref(false)
@@ -26,17 +25,14 @@ const loadingRequests = ref(false)
 const joinRequests = ref<any[]>([])
 const currentRequestBoardId = ref<string | null>(null)
 
-onMounted(async () => {
-  // Subscribe BEFORE fetch to catch all broadcasts
-  subscribeAppPresence()
-  
-  await list()
-  await fetchAppPresence()
-  loading.value = false
-})
+// Confirmation modal
+const showConfirmModal = ref(false)
+const confirmMessage = ref('')
+const confirmAction = ref<(() => Promise<void>) | null>(null)
 
-onUnmounted(() => {
-  unsubscribeAppPresence()
+onMounted(async () => {
+  await list()
+  loading.value = false
 })
 
 const openBoard = (boardId: string) => {
@@ -57,16 +53,19 @@ const viewRequests = async (boardId: string) => {
     const requests = await listRequests(boardId)
     joinRequests.value = requests
   } catch (err: any) {
-    alert(err.message || 'Failed to load requests')
+    toast.error(err.message || 'Failed to load requests')
   } finally {
     loadingRequests.value = false
   }
 }
 
 const deleteBoard = async (boardId: string) => {
-  if (confirm('Delete this board? All tasks will be lost.')) {
+  confirmMessage.value = 'Delete this board? All tasks will be lost.'
+  confirmAction.value = async () => {
     await remove(boardId)
+    toast.success('Board deleted successfully')
   }
+  showConfirmModal.value = true
 }
 
 const handleSaveBoard = async () => {
@@ -87,22 +86,26 @@ const closeModal = () => {
 const joinBoard = async (boardId: string) => {
   try {
     await requestJoin(boardId)
-    alert('Join request sent! Wait for owner approval.')
+    toast.success('Join request sent! Wait for owner approval.')
     // Real-time will update the list automatically
   } catch (err: any) {
-    alert(err.message || 'Failed to send join request')
+    toast.error(err.message || 'Failed to send join request')
   }
 }
 
 const leaveBoard = async (boardId: string) => {
-  if (confirm('Leave this board?')) {
+  confirmMessage.value = 'Leave this board?'
+  confirmAction.value = async () => {
     await leave(boardId)
+    toast.success('Left board successfully')
   }
+  showConfirmModal.value = true
 }
 
 const handleApprove = async (requestId: string) => {
   try {
     await approveJoin(requestId)
+    toast.success('Request approved successfully')
     // Refresh requests list in modal
     if (currentRequestBoardId.value) {
       const requests = await listRequests(currentRequestBoardId.value)
@@ -110,13 +113,14 @@ const handleApprove = async (requestId: string) => {
     }
     // Real-time will update boards list automatically
   } catch (err: any) {
-    alert(err.message || 'Failed to approve request')
+    toast.error(err.message || 'Failed to approve request')
   }
 }
 
 const handleReject = async (requestId: string) => {
   try {
     await rejectJoin(requestId)
+    toast.info('Request rejected')
     // Refresh requests list in modal
     if (currentRequestBoardId.value) {
       const requests = await listRequests(currentRequestBoardId.value)
@@ -124,7 +128,7 @@ const handleReject = async (requestId: string) => {
     }
     // Real-time will update boards list automatically
   } catch (err: any) {
-    alert(err.message || 'Failed to reject request')
+    toast.error(err.message || 'Failed to reject request')
   }
 }
 
@@ -134,38 +138,46 @@ const closeRequestsModal = () => {
   currentRequestBoardId.value = null
 }
 
-const handleSignOut = async () => {
-  // Leave app presence before signing out
-  await leaveAppPresence()
-  unsubscribeAppPresence()
-  await signOut()
-  router.push('/')
+const handleConfirm = async () => {
+  if (confirmAction.value) {
+    try {
+      await confirmAction.value()
+    } catch (err: any) {
+      toast.error(err.message || 'Action failed')
+    }
+  }
+  showConfirmModal.value = false
+  confirmAction.value = null
+  confirmMessage.value = ''
+}
+
+const handleCancelConfirm = () => {
+  showConfirmModal.value = false
+  confirmAction.value = null
+  confirmMessage.value = ''
 }
 </script>
 
 <template>
-  <PageContainer>
+  <AppLayout>
     <div class="min-h-screen">
       <PageHeader title="My Boards">
         <template #right>
-          <GlassButton @click="showCreateModal = true" variant="shimmer" color="purple" size="md">
-            + Create Board
-          </GlassButton>
-          <GlassButton @click="$router.push('/profile')" variant="neon" color="blue" size="md">
-            Profile
-          </GlassButton>
-          <AppPresenceIndicator :onlineUsers="onlineUsers" />
-          <GlassButton @click="handleSignOut" variant="neon" color="red" size="md">
-            Sign Out
+          <GlassButton 
+            @click="showCreateModal = true" 
+            variant="shimmer" 
+            color="purple" 
+            size="md"
+            title="Create Board"
+            aria-label="Create Board"
+          >
+            <IconPlus :size="20" />
           </GlassButton>
         </template>
       </PageHeader>
 
       <div class="mx-6 p-6">
-        <div v-if="loading" class="loading-screen-centered-column py-20">
-          <div class="loading-spinner-primary mb-4"></div>
-          <p class="text-gray-600 dark:text-gray-400">Loading boards...</p>
-        </div>
+        <SkeletonList v-if="loading" variant="list" :columns="3" :items-per-column="2" />
         
         <div v-else-if="boards.length === 0" class="text-center py-20">
           <svg class="w-20 h-20 mx-auto mb-6 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -238,7 +250,19 @@ const handleSignOut = async () => {
         </div>
       </div>
     </div>
-  </PageContainer>
+
+    <!-- Confirmation Modal -->
+    <div v-if="showConfirmModal" class="modal-overlay" @click.self="handleCancelConfirm">
+      <div class="modal">
+        <h2>Confirm Action</h2>
+        <p class="confirm-message">{{ confirmMessage }}</p>
+        <div class="modal-actions">
+          <GlassButton @click="handleCancelConfirm" color="blue" size="md" variant="basic">Cancel</GlassButton>
+          <GlassButton @click="handleConfirm" color="red" size="md" variant="shimmer">Confirm</GlassButton>
+        </div>
+      </div>
+    </div>
+  </AppLayout>
 </template>
 
 <style scoped>
@@ -416,5 +440,16 @@ const handleSignOut = async () => {
 
 .dark .empty-requests {
   color: #9ca3af;
+}
+
+.confirm-message {
+  font-size: 1rem;
+  color: #374151;
+  margin-bottom: 1.5rem;
+  line-height: 1.5;
+}
+
+.dark .confirm-message {
+  color: #d1d5db;
 }
 </style>
