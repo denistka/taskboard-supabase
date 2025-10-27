@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { useProfile } from '../composables/useProfile'
 import { useToast } from '../composables/useToast'
 import AppLayout from '../components/AppLayout.vue'
@@ -9,7 +8,6 @@ import GlassButton from '../components/GlassButton.vue'
 import { GlassCard, GlassInput, GlassAvatar } from '../components/glass-ui'
 import { IconArrowLeft } from '../components/icons'
 
-const router = useRouter()
 const { profile, stats, loading, error, fetchProfile, updateProfile, fetchStats } = useProfile()
 const toast = useToast()
 

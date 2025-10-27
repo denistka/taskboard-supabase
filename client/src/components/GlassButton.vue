@@ -41,7 +41,7 @@ const props = withDefaults(defineProps<GlassButtonProps>(), {
   layout: 'inline'
 })
 
-const emit = defineEmits<GlassButtonEmits>()
+defineEmits<GlassButtonEmits>()
 
 const spinnerSize = computed(() => {
   switch (props.size) {

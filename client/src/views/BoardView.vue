@@ -19,7 +19,6 @@ const { todoTasks, inProgressTasks, doneTasks, loading, selectedTask, fetch, cre
 
 const searchQuery = ref('')
 let searchTimeout: ReturnType<typeof setTimeout> | null = null
-let currentBoardId: string | null = null  // Save boardId for unmount
 
 onMounted(async () => {
   try {
@@ -28,8 +27,6 @@ onMounted(async () => {
       router.push('/boards')
       return
     }
-
-    currentBoardId = boardId
 
     // Subscribe to events BEFORE joining to catch all broadcasts
     subscribeToTasksEvents()
@@ -46,7 +43,6 @@ onMounted(async () => {
 onUnmounted(() => {
   unsubscribeFromTasksEvents()
   unsubscribeBoardEvents()
-  currentBoardId = null
 })
 
 const handleSearch = () => {

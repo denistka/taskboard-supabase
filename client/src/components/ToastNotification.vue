@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 import { useToast, type Toast } from '../composables/useToast'
 import { IconClose } from './icons'
 

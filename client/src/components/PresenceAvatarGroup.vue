@@ -9,7 +9,7 @@
       <GlassAvatar
         v-for="(user, index) in displayedUsers"
         :key="user.user_id"
-        :src="user.profile?.avatar_url"
+        :src="user.profile?.avatar_url || undefined"
         :alt="user.profile?.full_name || user.profile?.email"
         :initials="getInitials(user.profile?.full_name || user.profile?.email || 'U')"
         :color="getAvatarColor(index)"
