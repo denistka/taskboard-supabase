@@ -1,18 +1,19 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, onMounted, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useBoards } from '../../composables/useBoards'
 import { useToast } from '../../composables/useNotification'
 import PageLayout from '../wrappers/PageLayout.vue'
 import SkeletonList from '../common/skeleton/SkeletonList.vue'
 import BoardCard from '../common/BoardCard.vue'
-import CreateBoardCard from '../common/CreateBoardCard.vue'
+import CreateBoardModal from '../common/CreateBoardModal.vue'
 import EditBoardModal from '../common/EditBoardModal.vue'
 import JoinRequestsModal from '../common/JoinRequestsModal.vue'
 import ConfirmModal from '../common/ConfirmModal.vue'
 import type { BoardWithRole } from '../../../../shared/types'
 
 const router = useRouter()
+const route = useRoute()
 const toast = useToast()
 const { 
   boards, 
@@ -30,6 +31,9 @@ const {
 // State
 const loading = ref(true)
 
+// Create Modal State
+const showCreateModal = ref(false)
+
 // Edit Modal State
 const showEditModal = ref(false)
 const editingBoard = ref<BoardWithRole | null>(null)
@@ -43,6 +47,15 @@ const joinRequests = ref<any[]>([])
 const showConfirmModal = ref(false)
 const confirmMessage = ref('')
 const confirmAction = ref<(() => Promise<void>) | null>(null)
+
+// Watch for create action from header
+watch(() => route.query.action, (action) => {
+  if (action === 'create') {
+    showCreateModal.value = true
+    // Clean up query param
+    router.replace({ path: route.path, query: {} })
+  }
+}, { immediate: true })
 
 // Lifecycle
 onMounted(async () => {
@@ -59,6 +72,7 @@ const handleCreateBoard = async (name: string, description: string) => {
   try {
     await create(name, description)
     toast.success('Board created successfully')
+    showCreateModal.value = false
   } catch (err: any) {
     toast.error(err.message || 'Failed to create board')
   }
@@ -169,9 +183,6 @@ const handleConfirm = async () => {
         <!-- Boards Grid -->
         <div class="max-w-7xl mx-auto">
           <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-            <!-- Create Board Card - Always First -->
-            <CreateBoardCard @create="handleCreateBoard" />
-            
             <!-- Existing Boards -->
             <BoardCard
               v-for="board in boards"
@@ -189,6 +200,12 @@ const handleConfirm = async () => {
       </div>
     </template>
   </PageLayout>
+
+  <!-- Create Board Modal -->
+  <CreateBoardModal
+    v-model="showCreateModal"
+    @create="handleCreateBoard"
+  />
 
   <!-- Edit Board Modal -->
   <EditBoardModal
