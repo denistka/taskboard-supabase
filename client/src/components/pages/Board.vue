@@ -5,7 +5,6 @@ import { useTasks } from '../../composables/useTasks'
 import { useBoard } from '../../composables/useBoard'
 import PageLayout from '../wrappers/PageLayout.vue'
 import BoardColumns from '../common/BoardColumns.vue'
-import SkeletonList from '../common/skeleton/SkeletonList.vue'
 import TaskDetailsModal from '../common/TaskDetailsModal.vue'
 import type { Task, TaskStatus } from '../../../../shared/types'
 
@@ -103,9 +102,6 @@ const handleTaskMoved = async (taskId: string, newStatus: string, newPosition: n
 
 <template>
   <PageLayout>
-    <template #page-skeleton>
-      <SkeletonList v-if="loading" variant="board" :columns="3" :items-per-column="3" />
-    </template>
     
     <template #content>
       <div v-if="!loading">
@@ -120,6 +116,7 @@ const handleTaskMoved = async (taskId: string, newStatus: string, newPosition: n
         />
       </div>
     </template>
+    
   </PageLayout>
 
   <!-- Task Details Modal -->

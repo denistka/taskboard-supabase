@@ -1,36 +1,44 @@
 <script setup lang="ts">
 import { useToast, type Toast } from '../../composables/useNotification'
-import { IconClose } from '../common/icons'
+import { 
+  IconClose, 
+  IconCheckCircle, 
+  IconXCircle, 
+  IconExclamationTriangle, 
+  IconInfoCircle 
+} from '../common/icons'
+import Button from '../common/ui/Button.vue'
+import { type Component } from 'vue'
 
 const { toasts, remove } = useToast()
 
 const getToastColor = (type: Toast['type']) => {
   switch (type) {
     case 'success':
-      return 'bg-green-500/90 border-green-400/50 text-white'
+      return 'bg-green-500/20 dark:bg-green-500/15 border-green-400/40 dark:border-green-400/30 text-green-100 dark:text-green-50 shadow-green-500/20'
     case 'error':
-      return 'bg-red-500/90 border-red-400/50 text-white'
+      return 'bg-red-500/20 dark:bg-red-500/15 border-red-400/40 dark:border-red-400/30 text-red-100 dark:text-red-50 shadow-red-500/20'
     case 'warning':
-      return 'bg-yellow-500/90 border-yellow-400/50 text-white'
+      return 'bg-yellow-500/20 dark:bg-yellow-500/15 border-yellow-400/40 dark:border-yellow-400/30 text-yellow-100 dark:text-yellow-50 shadow-yellow-500/20'
     case 'info':
-      return 'bg-blue-500/90 border-blue-400/50 text-white'
+      return 'bg-blue-500/20 dark:bg-blue-500/15 border-blue-400/40 dark:border-blue-400/30 text-blue-100 dark:text-blue-50 shadow-blue-500/20'
     default:
-      return 'bg-gray-500/90 border-gray-400/50 text-white'
+      return 'bg-gray-500/20 dark:bg-gray-500/15 border-gray-400/40 dark:border-gray-400/30 text-gray-100 dark:text-gray-50 shadow-gray-500/20'
   }
 }
 
-const getIconPath = (type: Toast['type']) => {
+const getIconComponent = (type: Toast['type']): Component => {
   switch (type) {
     case 'success':
-      return 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z' // check circle
+      return IconCheckCircle
     case 'error':
-      return 'M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z' // x circle
+      return IconXCircle
     case 'warning':
-      return 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z' // exclamation triangle
+      return IconExclamationTriangle
     case 'info':
-      return 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z' // info circle
+      return IconInfoCircle
     default:
-      return 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z'
+      return IconInfoCircle
   }
 }
 </script>
@@ -50,10 +58,11 @@ const getIconPath = (type: Toast['type']) => {
         v-for="toast in toasts"
         :key="toast.id"
         :class="[
-          'flex items-center gap-3 min-w-[280px] max-w-md p-4 rounded-lg',
-          'backdrop-blur-xl border shadow-2xl',
+          'flex items-center gap-3 min-w-[280px] max-w-md p-4 rounded-xl',
+          'backdrop-blur-2xl border shadow-2xl',
           'pointer-events-auto cursor-pointer',
-          'transition-all duration-300 hover:scale-105',
+          'transition-all duration-300 hover:scale-105 hover:shadow-xl',
+          'bg-white/10 dark:bg-gray-900/30',
           getToastColor(toast.type)
         ]"
         @click="remove(toast.id)"
@@ -62,20 +71,11 @@ const getIconPath = (type: Toast['type']) => {
       >
         <!-- Icon -->
         <div class="flex-shrink-0">
-          <svg
-            class="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="2"
-              :d="getIconPath(toast.type)"
-            />
-          </svg>
+          <component 
+            :is="getIconComponent(toast.type)" 
+            :size="24" 
+            :stroke-width="2"
+          />
         </div>
 
         <!-- Message -->
@@ -84,13 +84,16 @@ const getIconPath = (type: Toast['type']) => {
         </div>
 
         <!-- Close button -->
-        <button
+        <Button
+          variant="neon"
+          size="xs"
+          layout="inline"
           @click.stop="remove(toast.id)"
-          class="flex-shrink-0 hover:opacity-70 transition-opacity focus:outline-none focus:ring-2 focus:ring-white/50 rounded"
           :aria-label="`Close ${toast.type} notification`"
+          class="flex-shrink-0 !p-1 !min-w-0"
         >
           <IconClose :size="20" :stroke-width="2.5" />
-        </button>
+        </Button>
       </div>
     </transition-group>
   </div>

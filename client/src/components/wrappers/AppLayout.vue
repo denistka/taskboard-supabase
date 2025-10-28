@@ -20,7 +20,7 @@
       <div class="fixed w-full h-0 bottom-0 z-50">
         <slot name="notifications"></slot>
       </div>
-  
+      
     </div>
   </template>
   

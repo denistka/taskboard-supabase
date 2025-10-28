@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { uiButton, uiInput } from './ui'
-import { IconClose } from './icons'
+import { IconClose, IconPlus } from './icons'
 
 interface Props {
   modelValue: boolean
@@ -48,7 +48,7 @@ const handleClose = () => {
     <Transition name="fade">
       <div
         v-if="modelValue"
-        class="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
+        class="fixed inset-0 bg-black/30 backdrop-blur-md z-40"
         @click="handleClose"
       />
     </Transition>
@@ -57,20 +57,38 @@ const handleClose = () => {
     <Transition name="slide-down">
       <div 
         v-if="modelValue"
-        class="fixed top-16 right-4 bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl border border-white/20 dark:border-gray-700/30 shadow-2xl z-50 rounded-lg overflow-hidden min-w-[400px] max-w-[500px]"
+        class="modal-glass fixed top-16 right-4 shadow-2xl z-50 rounded-lg overflow-hidden min-w-[400px] max-w-[500px]"
+        style="backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px);"
       >
         <!-- Header -->
-        <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+        <div class="p-4 border-b border-white/20 dark:border-gray-700/40 flex items-center justify-between gap-3">
           <h2 class="text-xl font-bold text-gray-900 dark:text-gray-100">Create New Board</h2>
-          <ui-button
-            @click="handleClose"
-            color="blue"
-            size="xs"
-            variant="neon"
-            aria-label="Close"
-          >
-            <IconClose :size="16" />
-          </ui-button>
+          
+          <div class="flex items-center gap-3">
+
+            <ui-button
+                @click="handleCreate"
+                color="purple"
+                size="xs"
+                variant="shimmer"
+                :disabled="!boardName.trim()"
+                title="Create Board"
+                aria-label="Create board"
+            >
+              <IconPlus :size="16" />
+            </ui-button>
+
+            <ui-button
+                @click="handleClose"
+                color="red"
+                size="xs"
+                variant="neon"
+                aria-label="Close"
+            >
+              <IconClose :size="16" />
+            </ui-button>
+
+          </div>
         </div>
 
         <!-- Content -->
@@ -100,34 +118,23 @@ const handleClose = () => {
             />
           </div>
         </div>
-
-        <!-- Actions -->
-        <div class="p-6 pt-0 flex gap-2">
-          <ui-button 
-            @click="handleClose"
-            color="blue" 
-            size="md" 
-            variant="neon"
-          >
-            Cancel
-          </ui-button>
-          <ui-button 
-            @click="handleCreate"
-            color="purple" 
-            size="md" 
-            variant="shimmer"
-            :disabled="!boardName.trim()"
-            class="flex-1"
-          >
-            Create Board
-          </ui-button>
-        </div>
       </div>
     </Transition>
   </div>
 </template>
 
 <style scoped>
+/* Glass effect modal */
+.modal-glass {
+  background-color: rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.dark .modal-glass {
+  background-color: rgba(17, 24, 39, 0.2) !important;
+  border-color: rgba(55, 65, 81, 0.2) !important;
+}
+
 /* Fade animation for overlay */
 .fade-enter-active,
 .fade-leave-active {
@@ -142,13 +149,13 @@ const handleClose = () => {
 /* Slide down animation for modal */
 .slide-down-enter-active,
 .slide-down-leave-active {
-  transition: all 0.3s ease;
+  transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
 .slide-down-enter-from,
 .slide-down-leave-to {
   opacity: 0;
-  transform: translateY(-100px);
+  transform: translateY(-500px);
 }
 </style>
 

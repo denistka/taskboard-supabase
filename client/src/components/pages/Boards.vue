@@ -4,7 +4,6 @@ import { useRouter, useRoute } from 'vue-router'
 import { useBoards } from '../../composables/useBoards'
 import { useToast } from '../../composables/useNotification'
 import PageLayout from '../wrappers/PageLayout.vue'
-import SkeletonList from '../common/skeleton/SkeletonList.vue'
 import BoardCard from '../common/BoardCard.vue'
 import CreateBoardModal from '../common/CreateBoardModal.vue'
 import EditBoardModal from '../common/EditBoardModal.vue'
@@ -172,11 +171,6 @@ const handleConfirm = async () => {
 
 <template>
   <PageLayout>
-    <!-- Skeleton Loading -->
-    <template #page-skeleton>
-      <SkeletonList v-if="loading" variant="list" :columns="3" :items-per-column="2" />
-    </template>
-    
     <!-- Main Content -->
     <template #content>
       <div v-if="!loading" class="min-h-screen p-6">
@@ -189,7 +183,6 @@ const handleConfirm = async () => {
               :key="board.id"
               :board="board"
               @open="openBoard"
-              @edit="editBoard"
               @delete="deleteBoard"
               @leave="leaveBoard"
               @join="joinBoard"
@@ -199,6 +192,7 @@ const handleConfirm = async () => {
         </div>
       </div>
     </template>
+    
   </PageLayout>
 
   <!-- Create Board Modal -->
