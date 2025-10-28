@@ -7,7 +7,7 @@
     </div>
 
     <!-- Основной контент -->
-    <div class="relative z-20 flex flex-col items-center justify-center flex-1">
+    <div class="relative z-20 flex flex-col justify-center flex-1">
       <slot name="content"></slot>
     </div>
 

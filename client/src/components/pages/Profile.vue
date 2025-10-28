@@ -91,7 +91,7 @@ const handleSaveProfile = async () => {
   <page-layout>
     <template #content>
       <div v-if="!loading" class="min-h-screen p-6 flex justify-center">
-          <ui-card variant="strong" padding="lg" class="shadow-lg w-full max-w-4xl">
+          <ui-card variant="strong" padding="lg" class="shadow-lg w-full">
             <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">Edit Profile</h2>
             
             <div v-if="error" class="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-4 rounded-lg mb-6 text-sm">{{ error }}</div>
@@ -104,7 +104,6 @@ const handleSaveProfile = async () => {
                   size="xl"
                   color="bg-primary-500"
                   alt="Avatar"
-                  class="border-4 border-gray-200 dark:border-gray-700"
                 />
                 <div class="flex-1">
                   <label class="label-text-themed-semibold">Avatar Image</label>

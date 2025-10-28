@@ -1,8 +1,7 @@
 import { WebSocketServer } from 'ws'
 import { config } from './config.js'
 import { ConnectionManager } from './managers/ConnectionManager.js'
-import { AppPresenceManager } from './managers/AppPresenceManager.js'
-import { BoardPresenceManager } from './managers/BoardPresenceManager.js'
+import { PresenceManager } from './managers/PresenceManager.js'
 import { BoardManager } from './managers/BoardManager.js'
 import { TaskManager } from './managers/TaskManager.js'
 import { AuthManager } from './managers/AuthManager.js'
@@ -12,13 +11,12 @@ import { MessageHandler } from './MessageHandler.js'
 const wss = new WebSocketServer({ port: config.port })
 
 const conn = new ConnectionManager()
-const appPresence = new AppPresenceManager()
-const boardPresence = new BoardPresenceManager()
+const presence = new PresenceManager()
 const board = new BoardManager()
 const task = new TaskManager()
 const auth = new AuthManager()
 const profile = new ProfileManager()
-const handler = new MessageHandler(conn, appPresence, boardPresence, board, task, auth, profile)
+const handler = new MessageHandler(conn, presence, board, task, auth, profile)
 
 let connectionIdCounter = 0
 
@@ -42,21 +40,27 @@ wss.on('connection', (ws) => {
   ws.on('close', () => {
     const wsId = (ws as any)._id
     console.log(`[WS] Connection closed: ${wsId}`)
-    const connData = conn.get(ws)
     
-    // Force remove from app presence (ignore inactive timeout)
-    const appUsers = appPresence.forceRemove(wsId)
-    if (appUsers) {
-      conn.broadcastToAuthenticated({ type: 'app:presence:updated', data: { users: appUsers } })
-    }
-    
-    // Force remove from board presence if user was in a board
-    const boardResult = boardPresence.forceRemove(wsId)
-    if (boardResult) {
-      conn.broadcastToBoard(
-        { type: 'board:presence:updated', data: { users: boardResult.users, boardId: boardResult.boardId } },
-        boardResult.boardId
-      )
+    // Force remove from all presence contexts
+    const presenceResults = presence.forceRemove(wsId)
+    for (const { context, contextId, users } of presenceResults) {
+      if (context === 'app') {
+        conn.broadcastToAuthenticated({
+          type: 'presence:updated',
+          data: { context, contextId, users }
+        })
+      } else if (context === 'board' && contextId) {
+        conn.broadcastToBoard({
+          type: 'presence:updated',
+          data: { context, contextId, users }
+        }, contextId)
+      } else {
+        // Broadcast for custom contexts
+        conn.broadcastToAuthenticated({
+          type: 'presence:updated',
+          data: { context, contextId, users }
+        })
+      }
     }
     
     conn.remove(ws)
@@ -66,9 +70,12 @@ wss.on('connection', (ws) => {
 // Broadcast presence updates every 30 seconds to sync active/inactive status
 setInterval(() => {
   // App presence
-  const appUsers = appPresence.getOnlineUsers()
+  const appUsers = presence.getByContext('app', null)
   if (appUsers.length > 0) {
-    conn.broadcastToAuthenticated({ type: 'app:presence:updated', data: { users: appUsers } })
+    conn.broadcastToAuthenticated({ 
+      type: 'presence:updated', 
+      data: { context: 'app', contextId: null, users: appUsers } 
+    })
   }
   
   // Board presence
@@ -78,19 +85,14 @@ setInterval(() => {
   })
   
   boardIds.forEach(boardId => {
-    const users = boardPresence.getByBoard(boardId)
+    const users = presence.getByContext('board', boardId)
     if (users.length > 0) {
-      conn.broadcastToBoard({ type: 'board:presence:updated', data: { users, boardId } }, boardId)
+      conn.broadcastToBoard({ 
+        type: 'presence:updated', 
+        data: { context: 'board', contextId: boardId, users } 
+      }, boardId)
     }
   })
 }, 30 * 1000)
-
-// Cleanup stale presence every minute
-setInterval(() => {
-  const appCleaned = appPresence.cleanup()
-  const boardCleaned = boardPresence.cleanup()
-  const total = appCleaned + boardCleaned
-  if (total > 0) console.log(`[WS] Cleaned ${total} stale connections (app: ${appCleaned}, board: ${boardCleaned})`)
-}, 60 * 1000)
 
 console.log(`[WS] Server running on ws://localhost:${config.port}`)

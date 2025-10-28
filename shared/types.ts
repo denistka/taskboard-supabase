@@ -80,6 +80,17 @@ export interface BoardPresence {
   profile?: Profile
 }
 
+export interface Presence {
+  user_id: string
+  context: string
+  context_id: string | null
+  last_seen: string
+  last_activity: string
+  is_active: boolean
+  event_data: Record<string, any>
+  profile?: Profile
+}
+
 export type UserPresence = BoardPresence
 
 export interface WSMessage<T = any> {

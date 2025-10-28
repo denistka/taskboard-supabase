@@ -1,8 +1,7 @@
 import type { WebSocket } from 'ws'
 import type { WSMessage, WSResponse } from '../../shared/types.js'
 import { ConnectionManager } from './managers/ConnectionManager.js'
-import { AppPresenceManager } from './managers/AppPresenceManager.js'
-import { BoardPresenceManager } from './managers/BoardPresenceManager.js'
+import { PresenceManager } from './managers/PresenceManager.js'
 import { BoardManager } from './managers/BoardManager.js'
 import { TaskManager } from './managers/TaskManager.js'
 import { AuthManager } from './managers/AuthManager.js'
@@ -11,8 +10,7 @@ import { ProfileManager } from './managers/ProfileManager.js'
 export class MessageHandler {
   constructor(
     private conn: ConnectionManager,
-    private appPresence: AppPresenceManager,
-    private boardPresence: BoardPresenceManager,
+    private presence: PresenceManager,
     private board: BoardManager,
     private task: TaskManager,
     private auth: AuthManager,
@@ -30,11 +28,10 @@ export class MessageHandler {
         const connData = this.conn.get(ws)
         if (connData && !connData.user) {
           this.conn.update(ws, { user: user as any })
-          console.log(`[MessageHandler] User ${user.email} added to connection for broadcasts`)
           
           // Add to app presence on reconnect (e.g., after page reload)
-          const onlineUsers = this.appPresence.add((ws as any)._id, user)
-          this.conn.broadcastToAuthenticated({ type: 'app:presence:updated', data: { users: onlineUsers } })
+          const onlineUsers = await this.presence.add((ws as any)._id, user as any, 'app', null)
+          this.broadcastPresenceUpdate('app', null, onlineUsers)
         }
       }
       
@@ -45,8 +42,17 @@ export class MessageHandler {
         case 'auth:signin':
           result = await this.auth.signIn(payload.email, payload.password)
           if (result.user) {
-            const onlineUsers = this.appPresence.add((ws as any)._id, result.user)
-            this.conn.broadcastToAuthenticated({ type: 'app:presence:updated', data: { users: onlineUsers } })
+            // Update connection user
+            const connData = this.conn.get(ws)
+            if (connData) {
+              this.conn.update(ws, { user: result.user as any })
+              
+              // Always add to app presence if user is not already online
+              if (!this.presence.isUserInContext(result.user.id, 'app', null)) {
+                const onlineUsers = await this.presence.add((ws as any)._id, result.user as any, 'app', null)
+                this.broadcastPresenceUpdate('app', null, onlineUsers)
+              }
+            }
           }
           break
         case 'auth:signup':
@@ -120,17 +126,17 @@ export class MessageHandler {
         case 'board:join':
           if (!user) throw new Error('Not authenticated')
           this.conn.update(ws, { user, boardId: payload.boardId })
-          const joinedUsers = this.boardPresence.add((ws as any)._id, user, payload.boardId)
+          const joinedUsers = await this.presence.add((ws as any)._id, user as any, 'board', payload.boardId)
           // Broadcast to ALL clients in the board (including the sender)
-          this.conn.broadcastToBoard({ type: 'board:presence:updated', data: { users: joinedUsers, boardId: payload.boardId } }, payload.boardId)
+          this.broadcastPresenceUpdate('board', payload.boardId, joinedUsers)
           result = { message: 'Joined board', users: joinedUsers }
           break
         case 'board:leave':
           const connData = this.conn.get(ws)
           if (connData?.boardId) {
-            const presenceResult = this.boardPresence.forceRemove((ws as any)._id)
-            if (presenceResult) {
-              this.conn.broadcastToBoard({ type: 'board:presence:updated', data: { users: presenceResult.users, boardId: presenceResult.boardId } }, presenceResult.boardId)
+            const leftUsers = this.presence.remove((ws as any)._id, 'board', connData.boardId)
+            if (leftUsers) {
+              this.broadcastPresenceUpdate('board', connData.boardId, leftUsers)
             }
             this.conn.update(ws, { boardId: undefined })
           }
@@ -168,31 +174,45 @@ export class MessageHandler {
           result = { tasks: payload.tasks }
           break
 
-        // Presence
-        case 'app:presence:fetch':
-          result = { users: this.appPresence.getOnlineUsers() }
+        // Universal Presence API
+        case 'presence:fetch':
+          result = { users: this.presence.getByContext(payload.context, payload.contextId || null) }
           break
-        case 'app:presence:update':
+        case 'presence:join':
           if (!user) throw new Error('Not authenticated')
-          this.appPresence.update((ws as any)._id, payload.eventData || {})
-          result = { message: 'App presence updated' }
+          const presenceJoinedUsers = await this.presence.add(
+            (ws as any)._id,
+            user as any,
+            payload.context,
+            payload.contextId || null,
+            payload.eventData || {}
+          )
+          result = { users: presenceJoinedUsers }
+          this.broadcastPresenceUpdate(payload.context, payload.contextId || null, presenceJoinedUsers)
           break
-        case 'app:presence:leave':
+        case 'presence:update':
           if (!user) throw new Error('Not authenticated')
-          const removedUsers = this.appPresence.forceRemove((ws as any)._id)
-          if (removedUsers) {
-            this.conn.broadcastToAuthenticated({ type: 'app:presence:updated', data: { users: removedUsers } })
+          this.presence.update(
+            (ws as any)._id,
+            payload.context,
+            payload.contextId || null,
+            payload.eventData || {}
+          )
+          result = { message: 'Presence updated' }
+          break
+        case 'presence:leave':
+          if (!user) throw new Error('Not authenticated')
+          const leftUsers = this.presence.remove(
+            (ws as any)._id,
+            payload.context,
+            payload.contextId || null
+          )
+          if (leftUsers) {
+            this.broadcastPresenceUpdate(payload.context, payload.contextId || null, leftUsers)
           }
-          result = { message: 'Left app presence' }
+          result = { message: 'Left presence' }
           break
-        case 'board:presence:fetch':
-          result = { users: this.boardPresence.getByBoard(payload.boardId) }
-          break
-        case 'board:presence:update':
-          if (!user) throw new Error('Not authenticated')
-          const boardUsers = this.boardPresence.update((ws as any)._id, payload.eventData || {})
-          result = { message: 'Board presence updated' }
-          break
+
 
         // Profile
         case 'profile:get':
@@ -202,6 +222,17 @@ export class MessageHandler {
         case 'profile:update':
           if (!user) throw new Error('Not authenticated')
           const updatedProfile = await this.profile.update(user.id, payload.updates)
+          
+          // Refresh profile cache in presence manager
+          await this.presence.refreshProfile(user.id)
+          
+          // Broadcast updated presence for all contexts where user is present
+          const userContexts = this.presence.getUserContexts(user.id)
+          for (const { context, contextId } of userContexts) {
+            const contextUsers = this.presence.getByContext(context, contextId)
+            this.broadcastPresenceUpdate(context, contextId, contextUsers)
+          }
+          
           result = { profile: updatedProfile }
           break
         case 'profile:stats':
@@ -215,30 +246,34 @@ export class MessageHandler {
 
       // Update user activity AFTER action completed
       if (user && !type.startsWith('auth:') && !type.includes('presence')) {
-        const wsId = (ws as any)._id
-        const connData = this.conn.get(ws)
-        
-        // Touch app presence
-        const appStatusChanged = this.appPresence.touch(wsId)
-        if (appStatusChanged) {
-          const onlineUsers = this.appPresence.getOnlineUsers()
-          this.conn.broadcastToAuthenticated({ type: 'app:presence:updated', data: { users: onlineUsers } })
-        }
-        
-        // Touch board presence if on a board
-        if (connData?.boardId) {
-          const boardStatusChanged = this.boardPresence.touch(wsId)
-          if (boardStatusChanged) {
-            const boardUsers = this.boardPresence.getByBoard(connData.boardId)
-            this.conn.broadcastToBoard({ type: 'board:presence:updated', data: { users: boardUsers, boardId: connData.boardId } }, connData.boardId)
-          }
-        }
+        // Activity tracking is now handled by heartbeat in PresenceManager
+        // No need for explicit touch calls
       }
 
       this.conn.send(ws, { id, success: true, data: result })
     } catch (error: any) {
       console.error(`[MessageHandler] Error handling ${type}:`, error.message)
       this.conn.send(ws, { id, success: false, error: error.message })
+    }
+  }
+
+  private broadcastPresenceUpdate(context: string, contextId: string | null, users: any[]) {
+    if (context === 'app') {
+      this.conn.broadcastToAuthenticated({ 
+        type: 'presence:updated', 
+        data: { context: 'app', contextId: null, users } 
+      })
+    } else if (context === 'board' && contextId) {
+      this.conn.broadcastToBoard({ 
+        type: 'presence:updated', 
+        data: { context, contextId, users } 
+      }, contextId)
+    } else {
+      // Для других контекстов - broadcast всем подключенным к этому контексту
+      this.conn.broadcastToAuthenticated({
+        type: 'presence:updated',
+        data: { context, contextId, users }
+      })
     }
   }
 }

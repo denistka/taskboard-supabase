@@ -3,7 +3,7 @@
 import { onMounted, onUnmounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from '../../composables/useAuth'
-import { useAppPresence } from '../../composables/useAppPresence'
+import { usePresence } from '../../composables/presence/usePresence'
 import { useBoard } from '../../composables/useBoard'
 import UserAppPresence from '../common/presence/UserAppPresence.vue'
 import { uiButton, uiThemeSwitcher } from '../common/ui'
@@ -13,7 +13,7 @@ import { useTheme } from '../../composables/useTheme'
 const router = useRouter()
 const route = useRoute()
 const { signOut, isAuthenticated } = useAuth()
-const { onlineUsers, fetch: fetchAppPresence, leave: leaveAppPresence, subscribeToEvents, unsubscribeFromEvents } = useAppPresence()
+const presence = usePresence()
 const { currentBoard } = useBoard()
 
 const { isDark, toggle } = useTheme()
@@ -54,12 +54,13 @@ const handleCreateBoard = () => {
 }
 
 onMounted(async () => {
-  subscribeToEvents()
-  await fetchAppPresence()
+  if (isAuthenticated.value) {
+    await presence.app.join()
+  }
 })
 
 onUnmounted(() => {
-  unsubscribeFromEvents()
+  presence.app.unsubscribe()
 })
 
 const handleProfile = () => {
@@ -67,7 +68,9 @@ const handleProfile = () => {
 }
 
 const handleSignOut = async () => {
-  await leaveAppPresence()
+  // Leave all presence (board + app)
+  await presence.leaveAll()
+  // Sign out
   await signOut()
   router.push('/')
 }
@@ -78,9 +81,9 @@ const toggleTheme = () => {
 </script>
 
 <template>
-  <div class="flex items-center gap-3 justify-between p-2">
+  <div class="flex items-center gap-3 justify-between p-2 bg-gradient-to-b from-white/80 via-white/40 to-transparent dark:from-black/80 dark:via-black/40">
     
-    <!-- Left: Back button + Page Title -->
+    <!-- Left: Back button -->
     <div class="flex items-center gap-3">
       <ui-button v-if="showBackButton"
         variant="neon" size="xs" color="lime" @click="handleBack"
@@ -88,10 +91,6 @@ const toggleTheme = () => {
         aria-label="Back to Boards">
         <icon-arrow-left :size="16" />
       </ui-button>
-      
-      <h1 v-if="pageTitle" class="text-xl font-bold">
-        <span class="text-gradient-primary-accent">{{ pageTitle }}</span>
-      </h1>
     </div>
 
     <!-- Right: User controls -->
@@ -108,8 +107,8 @@ const toggleTheme = () => {
         <icon-plus :size="16" />
       </ui-button>
 
-      <user-app-presence v-if="onlineUsers.length > 0"
-       :users="onlineUsers" :max-display="3" @profile="handleProfile" @signOut="handleSignOut"/>
+      <user-app-presence v-if="presence.app.users.value.length > 0"
+       :users="presence.app.users.value" :max-display="3" @profile="handleProfile" @signOut="handleSignOut"/>
      
       <ui-button v-if="isAuthenticated"
         variant="neon" size="xs" color="blue" @click="handleProfile"> <icon-user :size="14" /> </ui-button>
