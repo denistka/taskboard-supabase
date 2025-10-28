@@ -100,7 +100,6 @@
   }
 
   .card-glass-strong-rounded-2xl {
-    @apply bg-white/60 dark:bg-gray-900/60;
     @apply backdrop-blur-2xl;
     @apply border border-white/30 dark:border-gray-700/40;
     @apply shadow-2xl rounded-2xl;
@@ -201,10 +200,6 @@
   }
   
   .dark .bg-gradient-home-page-light-dark {
-    /* Fallback for older browsers */
-    background: -webkit-linear-gradient(to bottom right, rgb(9 23 52), #050313 50%, rgb(10 15 30));
-    background: -moz-linear-gradient(to bottom right, rgb(9 23 52), #050313 50%, rgb(10 15 30));
-    /* Modern syntax with CSS variable */
     background: linear-gradient(to bottom right, rgb(9 23 52), #050313 var(--tw-gradient-via-position), rgb(10 15 30));
     --tw-gradient-via-position: 50%;
   }
@@ -215,10 +210,6 @@
   }
   
   .dark .bg-gradient-auth-page-light-dark {
-    /* Fallback for older browsers */
-    background: -webkit-linear-gradient(to bottom right, rgb(9 23 52), #050313 50%, rgb(10 15 30));
-    background: -moz-linear-gradient(to bottom right, rgb(9 23 52), #050313 50%, rgb(10 15 30));
-    /* Modern syntax with CSS variable */
     background: linear-gradient(to bottom right, rgb(9 23 52), #050313 var(--tw-gradient-via-position), rgb(10 15 30));
     --tw-gradient-via-position: 50%;
   }
@@ -229,27 +220,48 @@
   }
   
   .dark .bg-gradient-board-page-light-dark {
-    /* Fallback for older browsers */
-    background: -webkit-linear-gradient(to bottom right, rgb(9 23 52), #050313 50%, rgb(10 15 30));
-    background: -moz-linear-gradient(to bottom right, rgb(9 23 52), #050313 50%, rgb(10 15 30));
-    /* Modern syntax with CSS variable */
     background: linear-gradient(to bottom right, rgb(9 23 52), #050313 var(--tw-gradient-via-position), rgb(10 15 30));
     --tw-gradient-via-position: 50%;
   }
 }
 
-/* Scrollbar Styles */
+/* Scrollbar Styles - Тонкий красивый скроллбар */
 ::-webkit-scrollbar {
-  @apply w-2 h-2;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-gray-100 dark:bg-gray-900;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-gray-300 dark:bg-gray-700 rounded-full;
-  @apply hover:bg-gray-400 dark:hover:bg-gray-600;
+  background: rgba(156, 163, 175, 0.5);
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.7);
+}
+
+/* Для Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+}
+
+/* Dark mode */
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(75, 85, 99, 0.5);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(75, 85, 99, 0.7);
+}
+
+.dark * {
+  scrollbar-color: rgba(75, 85, 99, 0.5) transparent;
 }
 
 /* Hide Scrollbars */

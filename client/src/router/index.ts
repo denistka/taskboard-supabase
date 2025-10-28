@@ -1,10 +1,10 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuth } from '../composables/useAuth'
-import HomeView from '../views/HomeView.vue'
-import LoginView from '../views/LoginView.vue'
-import BoardsListView from '../views/BoardsListView.vue'
-import BoardView from '../views/BoardView.vue'
-import ProfileView from '../views/ProfileView.vue'
+import HomeView from '../components/pages/Home.vue'
+import LoginView from '../components/pages/Login.vue'
+import Boards from '../components/pages/Boards.vue'
+import BoardView from '../components/pages/Board.vue'
+import ProfileView from '../components/pages/Profile.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -14,6 +14,7 @@ const router = createRouter({
       name: 'home',
       component: HomeView
     },
+  
     {
       path: '/login',
       name: 'login',
@@ -22,7 +23,7 @@ const router = createRouter({
     {
       path: '/boards',
       name: 'boards',
-      component: BoardsListView,
+      component: Boards,
       meta: { requiresAuth: true }
     },
     {

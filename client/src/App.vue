@@ -1,26 +1,33 @@
-<template>
-  <div v-if="!initialized" class="loading-screen-centered-column">
-    <div class="loading-spinner-primary mb-4"></div>
-    <p class="text-gray-600 dark:text-gray-400 text-sm">Loading...</p>
-  </div>
-  <router-view v-else />
-  
-  <!-- Global Components -->
-  <ThemeSwitcher />
-  <ToastNotification />
-</template>
-
 <script setup lang="ts">
-import { onMounted } from 'vue'
-import { useAuth } from './composables/useAuth'
-import { useTheme } from './composables/useTheme'
-import ThemeSwitcher from './components/ThemeSwitcher.vue'
-import ToastNotification from './components/ToastNotification.vue'
-
-const { initialized } = useAuth()
-
-// Initialize theme system
-onMounted(() => {
-  useTheme()
-})
+import AppLayout from './components/wrappers/AppLayout.vue'
+import AppBackground from './components/modules/Background.vue'
+import AppHeader from './components/modules/Header.vue'
+import AppFooter from './components/modules/Footer.vue'
+import AppNotifications from './components/modules/Notifications.vue'
 </script>
+
+<template>
+  <app-layout>
+    
+    <template #bg>
+      <app-background />
+    </template>
+
+    <template #header>
+      <app-header />
+    </template>
+
+    <template #page-view-content> 
+      <router-view />
+    </template>
+
+    <template #footer>
+      <app-footer />
+    </template>
+
+    <template #notifications>
+      <app-notifications />
+    </template>
+
+  </app-layout>
+</template>
