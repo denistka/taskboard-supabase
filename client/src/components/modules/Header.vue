@@ -8,6 +8,7 @@ import { useBoard } from '../../composables/useBoard'
 import { useBoards } from '../../composables/useBoards'
 import UserAppPresence from '../common/presence/UserAppPresence.vue'
 import { uiButton, uiThemeSwitcher } from '../common/ui'
+import Search from './Search.vue'
 import { IconUser, IconLogout, IconArrowLeft, IconPlus } from '../common/icons'
 import { useTheme } from '../../composables/useTheme'
 
@@ -45,6 +46,11 @@ const pageTitle = computed(() => {
 
 const showCreateButton = computed(() => {
   return route.path === '/boards'
+})
+
+const showSearch = computed(() => {
+  const path = route.path
+  return path === '/boards' || path.startsWith('/board/')
 })
 
 const handleBack = () => {
@@ -86,14 +92,21 @@ const toggleTheme = () => {
 <template>
   <div class="flex items-center gap-3 justify-between p-2 bg-gradient-to-b from-white/80 via-white/40 to-transparent dark:from-black/80 dark:via-black/40">
     
-    <!-- Left: Back button -->
-    <div class="flex items-center gap-3">
+    <!-- Left: Back button and Search -->
+    <div class="flex items-center gap-3 flex-1">
       <ui-button v-if="showBackButton"
         variant="neon" size="xs" color="lime" @click="handleBack"
         title="Back to Boards"
         aria-label="Back to Boards">
         <icon-arrow-left :size="16" />
       </ui-button>
+      
+      <!-- Search Input -->
+      <div v-if="showSearch" class="flex items-center gap-2 flex-1 max-w-xs">
+        <search
+          :placeholder="route.path === '/boards' ? 'Search boards...' : 'Search tasks...'"
+        />
+      </div>
     </div>
 
     <!-- Right: User controls -->

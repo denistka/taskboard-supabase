@@ -112,7 +112,7 @@ onUnmounted(() => {
     padding="md" 
     :hover="true" 
     :class="[
-      'shadow-md flex flex-col cursor-grab active:cursor-grabbing transition-all duration-300 group hover-lift-scale border-l-4 mt-2 relative overflow-hidden',
+      'shadow-md flex flex-col cursor-grab active:cursor-grabbing transition-all duration-300 group hover-lift-scale border-l-4 mt-2 relative overflow-hidden max-w-[500px]',
       statusColorClass,
       !isConfirmingDelete ? 'cursor-pointer' : ''
     ]"

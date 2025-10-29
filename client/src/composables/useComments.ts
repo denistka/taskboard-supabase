@@ -1,24 +1,26 @@
 import { ref, computed } from 'vue'
 import { useWebSocket } from './useWebSocket'
 import { useAuth } from './useAuth'
-import type { TaskComment } from '../../../shared/types'
+import type { Comment } from '../../../shared/types'
 
-const comments = ref<Map<string, TaskComment[]>>(new Map())
+const comments = ref<Map<string, Comment[]>>(new Map())
 
 export function useComments() {
   const { send, on, off } = useWebSocket()
   const { getToken } = useAuth()
   const loading = ref(false)
 
-  const getCommentsForTask = (taskId: string) => {
-    return computed(() => comments.value.get(taskId) || [])
+  const getCommentsForItem = (itemId: string, entityType: string) => {
+    const key = `${entityType}:${itemId}`
+    return computed(() => comments.value.get(key) || [])
   }
 
-  const fetch = async (taskId: string) => {
+  const fetch = async (itemId: string, entityType: string) => {
     loading.value = true
     try {
-      const result = await send<{ comments: TaskComment[] }>('comment:fetch', { taskId }, getToken()!)
-      comments.value.set(taskId, result.comments)
+      const result = await send<{ comments: Comment[] }>('comment:fetch', { entityId: itemId, entityType }, getToken()!)
+      const key = `${entityType}:${itemId}`
+      comments.value.set(key, result.comments)
     } catch (err) {
       console.error('Fetch comments error:', err)
       throw err
@@ -27,16 +29,16 @@ export function useComments() {
     }
   }
 
-  const create = async (taskId: string, content: string) => {
+  const create = async (itemId: string, content: string, entityType: string) => {
     try {
-      const result = await send<{ comment: TaskComment }>('comment:create', {
-        taskId,
+      const result = await send<{ comment: Comment }>('comment:create', {
+        entityId: itemId,
+        entityType,
         content
       }, getToken()!)
       
-      const taskComments = comments.value.get(taskId) || []
-      taskComments.push(result.comment)
-      comments.value.set(taskId, taskComments)
+      // Don't add locally - let WebSocket event handle it to avoid duplicates
+      // The comment will be added via the 'comment:created' event
       
       return result.comment
     } catch (err) {
@@ -46,78 +48,101 @@ export function useComments() {
   }
 
   const update = async (commentId: string, content: string) => {
-    const taskId = Array.from(comments.value.entries())
-      .find(([_, taskComments]) => taskComments.some(c => c.id === commentId))?.[0]
+    // Find the comment by searching all entity types
+    let foundKey: string | undefined
+    let foundComment: Comment | undefined
     
-    if (!taskId) return
+    for (const [key, itemComments] of comments.value.entries()) {
+      const comment = itemComments.find(c => c.id === commentId)
+      if (comment) {
+        foundKey = key
+        foundComment = comment
+        break
+      }
+    }
+    
+    if (!foundKey || !foundComment) return
 
-    const taskComments = comments.value.get(taskId) || []
-    const comment = taskComments.find(c => c.id === commentId)
-    if (!comment) return
-
-    const original = { ...comment }
-    Object.assign(comment, { content, updated_at: new Date().toISOString() })
+    const original = { ...foundComment }
+    Object.assign(foundComment, { content, updated_at: new Date().toISOString() })
 
     try {
-      const result = await send<{ comment: TaskComment }>('comment:update', {
+      const result = await send<{ comment: Comment }>('comment:update', {
         commentId,
         content
       }, getToken()!)
       
-      const idx = taskComments.findIndex(c => c.id === commentId)
+      const itemComments = comments.value.get(foundKey) || []
+      const idx = itemComments.findIndex(c => c.id === commentId)
       if (idx !== -1) {
-        taskComments[idx] = result.comment
-        comments.value.set(taskId, taskComments)
+        itemComments[idx] = result.comment
+        comments.value.set(foundKey, itemComments)
       }
     } catch (err) {
-      Object.assign(comment, original)
+      Object.assign(foundComment, original)
       throw err
     }
   }
 
   const remove = async (commentId: string) => {
-    const taskId = Array.from(comments.value.entries())
-      .find(([_, taskComments]) => taskComments.some(c => c.id === commentId))?.[0]
+    // Find the comment by searching all entity types
+    let foundKey: string | undefined
     
-    if (!taskId) return
+    for (const [key, itemComments] of comments.value.entries()) {
+      if (itemComments.some(c => c.id === commentId)) {
+        foundKey = key
+        break
+      }
+    }
+    
+    if (!foundKey) return
 
-    const taskComments = comments.value.get(taskId) || []
-    comments.value.set(taskId, taskComments.filter(c => c.id !== commentId))
+    const itemComments = comments.value.get(foundKey) || []
+    comments.value.set(foundKey, itemComments.filter(c => c.id !== commentId))
 
     try {
       await send('comment:delete', { commentId }, getToken()!)
     } catch (err) {
       // Revert on error
-      comments.value.set(taskId, taskComments)
+      comments.value.set(foundKey, itemComments)
       console.error('Delete comment error:', err)
       throw err
     }
   }
 
   const subscribeToEvents = () => {
-    on('comment:created', (data: { comment: TaskComment; taskId: string }) => {
-      const taskComments = comments.value.get(data.taskId) || []
-      if (!taskComments.find(c => c.id === data.comment.id)) {
-        taskComments.push(data.comment)
-        comments.value.set(data.taskId, taskComments)
+    on('comment:created', (data: { comment: Comment; entityId?: string; entityType?: string }) => {
+      const itemId = data.entityId
+      const entityType = data.entityType
+      if (!itemId || !entityType) return
+      // Use a composite key to store comments by entityId+entityType
+      const key = `${entityType}:${itemId}`
+      const itemComments = comments.value.get(key) || []
+      if (!itemComments.find(c => c.id === data.comment.id)) {
+        itemComments.push(data.comment)
+        comments.value.set(key, itemComments)
       }
     })
-    on('comment:updated', (data: { comment: TaskComment }) => {
-      const taskId = Array.from(comments.value.entries())
-        .find(([_, taskComments]) => taskComments.some(c => c.id === data.comment.id))?.[0]
+    on('comment:updated', (data: { comment: Comment }) => {
+      const itemId = Array.from(comments.value.entries())
+        .find(([_, itemComments]) => itemComments.some(c => c.id === data.comment.id))?.[0]
       
-      if (taskId) {
-        const taskComments = comments.value.get(taskId) || []
-        const idx = taskComments.findIndex(c => c.id === data.comment.id)
+      if (itemId) {
+        const itemComments = comments.value.get(itemId) || []
+        const idx = itemComments.findIndex(c => c.id === data.comment.id)
         if (idx !== -1) {
-          taskComments[idx] = data.comment
-          comments.value.set(taskId, taskComments)
+          itemComments[idx] = data.comment
+          comments.value.set(itemId, itemComments)
         }
       }
     })
-    on('comment:deleted', (data: { commentId: string; taskId: string }) => {
-      const taskComments = comments.value.get(data.taskId) || []
-      comments.value.set(data.taskId, taskComments.filter(c => c.id !== data.commentId))
+    on('comment:deleted', (data: { commentId: string; entityId?: string; entityType?: string }) => {
+      const itemId = data.entityId
+      const entityType = data.entityType
+      if (!itemId || !entityType) return
+      const key = `${entityType}:${itemId}`
+      const itemComments = comments.value.get(key) || []
+      comments.value.set(key, itemComments.filter(c => c.id !== data.commentId))
     })
   }
 
@@ -130,7 +155,7 @@ export function useComments() {
   return {
     comments,
     loading,
-    getCommentsForTask,
+    getCommentsForItem,
     fetch,
     create,
     update,

@@ -13,5 +13,5 @@ export { default as TaskColumnHeader } from './TaskColumnHeader.vue'
 export { default as TaskCreationForm } from './TaskCreationForm.vue'
 export { default as DropIndicator } from './DropIndicator.vue'
 export { default as EmptyTaskState } from './EmptyTaskState.vue'
-export { default as TaskComments } from './TaskComments.vue'
+// TaskComments moved to modules/comments/Comments.vue
 

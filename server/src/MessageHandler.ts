@@ -178,54 +178,36 @@ export class MessageHandler {
 
         // Comments
         case 'comment:fetch':
-          result = { comments: await this.comment.fetchByTask(payload.taskId) }
+          result = { comments: await this.comment.fetchByItem(payload.entityId, payload.entityType) }
           break
         case 'comment:create':
           if (!user) throw new Error('Not authenticated')
-          const comment = await this.comment.create(payload.taskId, user.id, payload.content)
-          // Get board_id from task to broadcast
-          const { data: taskData } = await this.task['supabase']
-            .from('tasks')
-            .select('board_id')
-            .eq('id', payload.taskId)
-            .single()
-          if (taskData) {
-            this.conn.broadcastToBoard({ type: 'comment:created', data: { comment, taskId: payload.taskId } }, taskData.board_id, ws)
-          }
+          const entityId = payload.entityId
+          const entityType = payload.entityType
+          const comment = await this.comment.create(entityId, user.id, payload.content, entityType)
+          // Broadcast to all authenticated users - clients filter by entityId/entityType
+          this.conn.broadcastToAuthenticated({ type: 'comment:created', data: { comment, entityId, entityType } })
           result = { comment }
           break
         case 'comment:update':
           if (!user) throw new Error('Not authenticated')
           const updatedComment = await this.comment.update(payload.commentId, user.id, payload.content)
-          // Get board_id from task to broadcast
-          const { data: taskDataForUpdate } = await this.task['supabase']
-            .from('tasks')
-            .select('board_id')
-            .eq('id', updatedComment.task_id)
-            .single()
-          if (taskDataForUpdate) {
-            this.conn.broadcastToBoard({ type: 'comment:updated', data: { comment: updatedComment } }, taskDataForUpdate.board_id, ws)
-          }
+          // Broadcast to all authenticated users - clients filter by entityId/entityType
+          this.conn.broadcastToAuthenticated({ type: 'comment:updated', data: { comment: updatedComment } })
           result = { comment: updatedComment }
           break
         case 'comment:delete':
           if (!user) throw new Error('Not authenticated')
-          // Get task_id before deletion to get board_id for broadcast
+          // Get entity_id and entity_type before deletion for broadcast
           const { data: commentData } = await this.comment['supabase']
-            .from('task_comments')
-            .select('task_id')
+            .from('comments')
+            .select('entity_id, entity_type')
             .eq('id', payload.commentId)
             .single()
           await this.comment.delete(payload.commentId, user.id)
           if (commentData) {
-            const { data: taskDataForDelete } = await this.task['supabase']
-              .from('tasks')
-              .select('board_id')
-              .eq('id', commentData.task_id)
-              .single()
-            if (taskDataForDelete) {
-              this.conn.broadcastToBoard({ type: 'comment:deleted', data: { commentId: payload.commentId, taskId: commentData.task_id } }, taskDataForDelete.board_id, ws)
-            }
+            // Broadcast to all authenticated users - clients filter by entityId/entityType
+            this.conn.broadcastToAuthenticated({ type: 'comment:deleted', data: { commentId: payload.commentId, entityId: commentData.entity_id, entityType: commentData.entity_type } })
           }
           result = { message: 'Comment deleted' }
           break

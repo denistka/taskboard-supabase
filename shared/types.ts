@@ -27,9 +27,10 @@ export interface Task {
   profiles?: Profile
 }
 
-export interface TaskComment {
+export interface Comment {
   id: string
-  task_id: string
+  entity_id: string
+  entity_type?: string
   user_id: string
   content: string
   created_at: string

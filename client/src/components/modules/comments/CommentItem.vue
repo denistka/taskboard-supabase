@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { uiAvatar, uiButton, uiInput } from '../../common/ui'
-import type { TaskComment, Profile } from '../../../../../shared/types'
+import type { Comment, Profile } from '../../../../../shared/types'
 
 interface Props {
-  comment: TaskComment
+  comment: Comment
   currentUserId: string | null
   editingCommentId: string | null
   editingContent: string
@@ -90,8 +90,8 @@ const handleKeydown = (e: KeyboardEvent) => {
   }
 }
 
-const handleUpdateContent = (value: string) => {
-  emit('update:editingContent', value)
+const handleUpdateContent = (value: string | number) => {
+  emit('update:editingContent', String(value))
 }
 </script>
 
@@ -124,7 +124,7 @@ const handleUpdateContent = (value: string) => {
               v-if="!isEditing"
               @click="handleStartEdit"
               size="xs"
-              variant="basic"
+              variant="neon"
               color="blue"
               class="!px-2 !py-1 text-xs"
             >
@@ -134,7 +134,7 @@ const handleUpdateContent = (value: string) => {
               v-if="!isEditing"
               @click="handleDelete"
               size="xs"
-              variant="basic"
+              variant="neon"
               color="red"
               class="!px-2 !py-1 text-xs"
             >
@@ -190,3 +190,4 @@ const handleUpdateContent = (value: string) => {
   @apply py-2;
 }
 </style>
+

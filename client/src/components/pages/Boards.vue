@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useBoards } from '../../composables/useBoards'
 import { useToast } from '../../composables/useNotification'
+import { useSearch } from '../../composables/useSearch'
 import PageLayout from '../wrappers/PageLayout.vue'
 import BoardCard from './boards/BoardCard.vue'
 import CreateBoardModal from './boards/CreateBoardModal.vue'
@@ -10,6 +11,7 @@ import CreateBoardModal from './boards/CreateBoardModal.vue'
 const router = useRouter()
 const route = useRoute()
 const toast = useToast()
+const { searchQuery } = useSearch()
 const { 
   boards, 
   isBoardCreating,
@@ -24,6 +26,19 @@ const {
   listRequests,
   setIsBoardCreating,
 } = useBoards()
+
+// Filter boards based on search query
+const filteredBoards = computed(() => {
+  if (!searchQuery.value.trim()) {
+    return boards.value
+  }
+  
+  const query = searchQuery.value.toLowerCase().trim()
+  return boards.value.filter(board => 
+    board.name.toLowerCase().includes(query) ||
+    (board.description && board.description.toLowerCase().includes(query))
+  )
+})
 
 // State
 const loading = ref(true)
@@ -76,7 +91,7 @@ const handleBoardUpdate = async (boardId: string, data: { name: string; descript
 const deleteBoard = async (boardId: string) => {
   try {
     await remove(boardId)
-    toast.success('Board deleted successfully')
+    toast.error('Board deleted successfully')
   } catch (err: any) {
     toast.error(err.message || 'Failed to delete board')
   }
@@ -94,7 +109,7 @@ const leaveBoard = async (boardId: string) => {
 const joinBoard = async (boardId: string) => {
   try {
     await requestJoin(boardId)
-    toast.success('Join request sent! Wait for owner approval.')
+    toast.info('Join request sent! Wait for owner approval.')
   } catch (err: any) {
     toast.error(err.message || 'Failed to send join request')
   }
@@ -145,7 +160,7 @@ const handleRejectRequestInCard = async (requestId: string) => {
       }
     })
     
-    toast.success('Request rejected')
+    toast.warning('Request rejected')
   } catch (err: any) {
     toast.error(err.message || 'Failed to reject request')
   }
@@ -163,7 +178,7 @@ const handleRejectRequestInCard = async (requestId: string) => {
           <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
             <!-- Existing Boards -->
             <BoardCard
-              v-for="board in boards"
+              v-for="board in filteredBoards"
               :key="board.id"
               :board="board"
               :joinRequests="boardRequests[board.id] || []"

@@ -48,12 +48,12 @@ const handleFileUpload = (event: Event) => {
   if (!file) return
   
   if (!file.type.startsWith('image/')) {
-    toast.error('Please select an image file')
+    toast.warning('Please select an image file')
     return
   }
 
   if (file.size > 2 * 1024 * 1024) {
-    toast.error('Image size must be less than 2MB')
+    toast.warning('Image size must be less than 2MB')
     return
   }
   

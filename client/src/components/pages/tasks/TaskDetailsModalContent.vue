@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watchEffect, nextTick } from 'vue'
 import { uiButton } from '../../common/ui'
-import { TaskComments } from '.'
+import { Comments } from '../../modules/comments'
 import type { Task, TaskStatus } from '../../../../../shared/types'
 
 interface Props {
@@ -173,7 +173,7 @@ const handleSubmit = (e: Event) => {
     </form>
     
     <!-- Comments Section -->
-    <TaskComments :task="task" />
+    <Comments :entity-id="task?.id || null" />
   </div>
 </template>
 

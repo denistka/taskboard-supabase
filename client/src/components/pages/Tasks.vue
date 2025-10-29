@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue'
+import { onMounted, onUnmounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useTasks } from '../../composables/useTasks'
 import { useBoard } from '../../composables/useBoard'
 import { useToast } from '../../composables/useNotification'
 import { useAuth } from '../../composables/useAuth'
+import { useSearch } from '../../composables/useSearch'
 import PageLayout from '../wrappers/PageLayout.vue'
 import TasksColumns from './tasks/TasksColumns.vue'
 import TaskDetailsModal from './tasks/TaskDetailsModal.vue'
@@ -16,8 +17,26 @@ const toast = useToast()
 
 // Composables
 const { user } = useAuth()
+const { searchQuery } = useSearch()
 const { join, leave, subscribeToEvents: subscribeBoardEvents, unsubscribeFromEvents: unsubscribeBoardEvents } = useBoard()
 const { tasks, todoTasks, inProgressTasks, doneTasks, loading, selectedTask, fetch, create, update, remove, move, subscribeToEvents: subscribeToTasksEvents, unsubscribeFromEvents: unsubscribeFromTasksEvents } = useTasks()
+
+// Filter tasks based on search query
+const filterTasks = (taskList: Task[]) => {
+  if (!searchQuery.value.trim()) {
+    return taskList
+  }
+  
+  const query = searchQuery.value.toLowerCase().trim()
+  return taskList.filter(task => 
+    task.title.toLowerCase().includes(query) ||
+    (task.description && task.description.toLowerCase().includes(query))
+  )
+}
+
+const filteredTodoTasks = computed(() => filterTasks(todoTasks.value))
+const filteredInProgressTasks = computed(() => filterTasks(inProgressTasks.value))
+const filteredDoneTasks = computed(() => filterTasks(doneTasks.value))
 
 onMounted(async () => {
   try {
@@ -99,9 +118,9 @@ const handleTaskAutoSave = async (title: string, description: string, status: Ta
       selectedTask.value = updatedTask
     }
     
-    toast.success('Task auto-saved')
+    toast.info('Task auto-saved')
   } catch (err: any) {
-    toast.error(err.message || 'Auto-save failed')
+    toast.warning(err.message || 'Auto-save failed')
     console.error('Auto-save failed:', err)
   }
 }
@@ -114,7 +133,7 @@ const handleTaskDelete = async () => {
   try {
     await remove(selectedTask.value.id)
     selectedTask.value = null
-    toast.success(`Task "${taskTitle}" deleted successfully`)
+    toast.error(`Task "${taskTitle}" deleted successfully`)
   } catch (err: any) {
     toast.error(err.message || 'Failed to delete task')
   }
@@ -126,7 +145,7 @@ const handleTaskDeleteFromCard = async (taskId: string) => {
   
   try {
     await remove(taskId)
-    toast.success(`Task "${taskTitle}" deleted successfully`)
+    toast.error(`Task "${taskTitle}" deleted successfully`)
   } catch (err: any) {
     toast.error(err.message || 'Failed to delete task')
   }
@@ -149,9 +168,9 @@ const handleTaskMoved = async (taskId: string, newStatus: string, newPosition: n
       <div v-if="!loading" class="absolute inset-0 w-full h-full overflow-hidden">
         <!-- Board Columns -->
         <TasksColumns
-          :todo-tasks="todoTasks"
-          :in-progress-tasks="inProgressTasks"
-          :done-tasks="doneTasks"
+          :todo-tasks="filteredTodoTasks"
+          :in-progress-tasks="filteredInProgressTasks"
+          :done-tasks="filteredDoneTasks"
           @taskClick="handleTaskClick"
           @createTask="handleTaskSubmit"
           @taskMoved="handleTaskMoved"

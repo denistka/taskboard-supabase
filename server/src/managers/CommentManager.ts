@@ -1,8 +1,8 @@
 import { BaseManager } from './BaseManager.js'
-import type { TaskComment } from '../../../shared/types.js'
+import type { Comment } from '../../../shared/types.js'
 
 export class CommentManager extends BaseManager {
-  private async enrichWithProfiles(comments: any[]): Promise<TaskComment[]> {
+  private async enrichWithProfiles(comments: any[]): Promise<Comment[]> {
     if (comments.length === 0) return []
 
     // Get unique user IDs
@@ -26,22 +26,24 @@ export class CommentManager extends BaseManager {
     }))
   }
 
-  async fetchByTask(taskId: string): Promise<TaskComment[]> {
+  async fetchByItem(itemId: string, entityType: string): Promise<Comment[]> {
     const { data, error } = await this.supabase
-      .from('task_comments')
+      .from('comments')
       .select('*')
-      .eq('task_id', taskId)
+      .eq('entity_id', itemId)
+      .eq('entity_type', entityType)
       .order('created_at', { ascending: true })
 
     if (error) throw error
     return this.enrichWithProfiles(data || [])
   }
 
-  async create(taskId: string, userId: string, content: string): Promise<TaskComment> {
+  async create(itemId: string, userId: string, content: string, entityType: string): Promise<Comment> {
     const { data, error } = await this.supabase
-      .from('task_comments')
+      .from('comments')
       .insert({
-        task_id: taskId,
+        entity_id: itemId,
+        entity_type: entityType,
         user_id: userId,
         content
       })
@@ -53,9 +55,9 @@ export class CommentManager extends BaseManager {
     return enriched[0]
   }
 
-  async update(commentId: string, userId: string, content: string): Promise<TaskComment> {
+  async update(commentId: string, userId: string, content: string): Promise<Comment> {
     const { data, error } = await this.supabase
-      .from('task_comments')
+      .from('comments')
       .update({
         content,
         updated_at: new Date().toISOString()
@@ -72,7 +74,7 @@ export class CommentManager extends BaseManager {
 
   async delete(commentId: string, userId: string): Promise<void> {
     const { error } = await this.supabase
-      .from('task_comments')
+      .from('comments')
       .delete()
       .eq('id', commentId)
       .eq('user_id', userId)
