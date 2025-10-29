@@ -4,8 +4,8 @@ import { useRouter, useRoute } from 'vue-router'
 import { useBoards } from '../../composables/useBoards'
 import { useToast } from '../../composables/useNotification'
 import PageLayout from '../wrappers/PageLayout.vue'
-import BoardCard from '../common/boards/BoardCard.vue'
-import CreateBoardModal from '../common/boards/CreateBoardModal.vue'
+import BoardCard from './boards/BoardCard.vue'
+import CreateBoardModal from './boards/CreateBoardModal.vue'
 
 const router = useRouter()
 const route = useRoute()

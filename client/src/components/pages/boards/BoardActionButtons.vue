@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { uiButton } from '../ui'
+import { uiButton } from '../../common/ui'
 import { 
   IconEdit, 
   IconBell, 
@@ -8,7 +8,7 @@ import {
   IconUserPlus, 
   IconClock, 
   IconCheckCircle 
-} from '../icons'
+} from '../../common/icons'
 
 interface Props {
   role?: 'owner' | 'member' | null
@@ -59,7 +59,7 @@ const emit = defineEmits<Emits>()
         :aria-label="pendingRequestsCount ? `View ${pendingRequestsCount} pending requests` : 'View join requests'"
       >
         <IconBell :size="16" />
-        <span v-if="pendingRequestsCount" class="absolute -top-1 -right-1 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+        <span v-if="pendingRequestsCount" class="absolute -top-1 -right-2 bg-red-500 dark:bg-red-600 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center shadow-lg">
           {{ pendingRequestsCount }}
         </span>
       </ui-button>

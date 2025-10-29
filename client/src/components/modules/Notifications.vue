@@ -15,15 +15,15 @@ const { toasts, remove } = useToast()
 const getToastColor = (type: Toast['type']) => {
   switch (type) {
     case 'success':
-      return 'bg-green-500/20 dark:bg-green-500/15 border-green-400/40 dark:border-green-400/30 text-green-100 dark:text-green-50 shadow-green-500/20'
+      return 'bg-green-500/20 dark:bg-green-500/15 border-green-400/40 dark:border-green-400/30 text-green-700 dark:text-green-50 shadow-green-500/20'
     case 'error':
-      return 'bg-red-500/20 dark:bg-red-500/15 border-red-400/40 dark:border-red-400/30 text-red-100 dark:text-red-50 shadow-red-500/20'
+      return 'bg-red-500/20 dark:bg-red-500/15 border-red-400/40 dark:border-red-400/30 text-red-700 dark:text-red-50 shadow-red-500/20'
     case 'warning':
-      return 'bg-yellow-500/20 dark:bg-yellow-500/15 border-yellow-400/40 dark:border-yellow-400/30 text-yellow-100 dark:text-yellow-50 shadow-yellow-500/20'
+      return 'bg-yellow-500/20 dark:bg-yellow-500/15 border-yellow-400/40 dark:border-yellow-400/30 text-yellow-800 dark:text-yellow-50 shadow-yellow-500/20'
     case 'info':
-      return 'bg-blue-500/20 dark:bg-blue-500/15 border-blue-400/40 dark:border-blue-400/30 text-blue-100 dark:text-blue-50 shadow-blue-500/20'
+      return 'bg-blue-500/20 dark:bg-blue-500/15 border-blue-400/40 dark:border-blue-400/30 text-blue-700 dark:text-blue-50 shadow-blue-500/20'
     default:
-      return 'bg-gray-500/20 dark:bg-gray-500/15 border-gray-400/40 dark:border-gray-400/30 text-gray-100 dark:text-gray-50 shadow-gray-500/20'
+      return 'bg-gray-500/20 dark:bg-gray-500/15 border-gray-400/40 dark:border-gray-400/30 text-gray-700 dark:text-gray-50 shadow-gray-500/20'
   }
 }
 

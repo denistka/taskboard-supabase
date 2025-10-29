@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { uiCard } from '../ui'
+import { uiCard } from '../../common/ui'
 
 interface Props {
   icon: string

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watchEffect, nextTick } from 'vue'
-import { uiButton } from '../ui'
+import { uiButton } from '../../common/ui'
 import { TaskComments } from '.'
 import type { Task, TaskStatus } from '../../../../../shared/types'
 
@@ -132,7 +132,8 @@ const handleSubmit = (e: Event) => {
             :key="option.value"
             type="button"
             :color="option.color as any"
-            :variant="option.value === currentTaskStatus ? 'neon' : 'basic'"
+            :disabled="option.value === currentTaskStatus"
+            variant='neon'
             size="sm"
             @click="handleStatusClick(option.value)"
           >

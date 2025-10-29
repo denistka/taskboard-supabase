@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { IconFileText } from '../icons'
+import { IconFileText } from '../../common/icons'
 </script>
 
 <template>

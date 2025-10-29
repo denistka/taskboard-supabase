@@ -2,7 +2,8 @@
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
 import { useComments } from '../../../composables/useComments'
 import { useAuth } from '../../../composables/useAuth'
-import { uiAvatar, uiButton } from '../ui'
+import { useProfile } from '../../../composables/useProfile'
+import { uiAvatar, uiButton } from '../../common/ui'
 import type { Task } from '../../../../../shared/types'
 
 interface Props {
@@ -13,6 +14,7 @@ const props = defineProps<Props>()
 
 const { getCommentsForTask, fetch, create, update, remove, subscribeToEvents, unsubscribeFromEvents } = useComments()
 const { user } = useAuth()
+const { profile, fetchProfile } = useProfile()
 
 const newCommentContent = ref('')
 const editingCommentId = ref<string | null>(null)
@@ -99,7 +101,6 @@ const handleSaveEdit = async () => {
 
 const handleDelete = async (commentId: string) => {
   if (isSubmitting.value) return
-  if (!confirm('Are you sure you want to delete this comment?')) return
 
   isSubmitting.value = true
   try {
@@ -118,13 +119,36 @@ watch(() => props.task?.id, async (taskId) => {
   }
 }, { immediate: true })
 
-// Subscribe to comment events
-onMounted(() => {
+// Fetch user profile on mount
+onMounted(async () => {
   subscribeToEvents()
+  if (user.value) {
+    try {
+      await fetchProfile()
+    } catch (err) {
+      console.error('Failed to fetch profile:', err)
+    }
+  }
 })
 
 onUnmounted(() => {
   unsubscribeFromEvents()
+})
+
+// Helper to get current user initials
+const getCurrentUserInitials = computed(() => {
+  if (profile.value?.full_name) {
+    return profile.value.full_name
+      .split(' ')
+      .map((n: string) => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2)
+  }
+  if (profile.value?.email || user.value?.email) {
+    return (profile.value?.email || user.value?.email)?.[0].toUpperCase() || '?'
+  }
+  return '?'
 })
 </script>
 
@@ -224,8 +248,8 @@ onUnmounted(() => {
         <div class="flex gap-3">
           <ui-avatar
             v-if="user"
-            :src="undefined"
-            :initials="user.email?.[0].toUpperCase() || '?'"
+            :src="profile?.avatar_url || undefined"
+            :initials="getCurrentUserInitials"
             size="sm"
             color="bg-green-500"
           />
@@ -244,8 +268,8 @@ onUnmounted(() => {
                 :disabled="!newCommentContent.trim() || isSubmitting"
                 :loading="isSubmitting"
                 size="sm"
-                color="blue"
-                variant="basic"
+                color="cyan"
+                variant="neon"
               >
                 Comment
               </ui-button>

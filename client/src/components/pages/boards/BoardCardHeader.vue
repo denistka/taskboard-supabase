@@ -23,10 +23,11 @@ const editedName = ref(props.name)
 const editedDescription = ref(props.description || '')
 
 // Watch for prop changes
-watch(() => [props.name, props.description], ([newName, newDesc]) => {
+watch(() => [props.name, props.description], (values) => {
   if (!props.isEditing) {
+    const [newName, newDesc] = values as [string, string | null | undefined]
     editedName.value = newName
-    editedDescription.value = newDesc || ''
+    editedDescription.value = newDesc ?? ''
   }
 })
 
@@ -124,7 +125,7 @@ defineExpose({
       ref="nameEditRef"
       :contenteditable="isEditing"
       :class="[
-        'text-2xl font-bold text-gray-100 mb-2',
+        'text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2',
         isEditing ? 'border-b-2 border-primary-500/10 min-h-[32px]' : ''
       ]"
       @input="handleNameInput"
@@ -141,7 +142,7 @@ defineExpose({
       ref="descriptionEditRef"
       :contenteditable="isEditing"
       :class="[
-        'text-sm text-gray-400',
+        'text-sm text-gray-600 dark:text-gray-400',
         isEditing ? 'border-b-2 border-primary-500/10 min-h-[24px]' : ''
       ]"
       @input="handleDescriptionInput"

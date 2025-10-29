@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { uiButton } from '../ui'
-import { IconClose, IconTrash, IconCheckCircle } from '../icons'
+import { uiButton } from '../../common/ui'
+import { IconClose, IconTrash, IconCheckCircle } from '../../common/icons'
 
 interface Emits {
   (e: 'close'): void
@@ -11,11 +11,16 @@ interface Emits {
 const props = defineProps<{
   title?: string
   hasChanges?: boolean
+  isSaving?: boolean
 }>()
 
 const emit = defineEmits<Emits>()
 
 const handleClose = () => {
+  // Prevent closing if save is in progress
+  if (props.isSaving) {
+    return
+  }
   emit('close')
 }
 
@@ -63,8 +68,9 @@ const handleDelete = () => {
         color="blue" 
         size="xs" 
         variant="neon"
+        :disabled="props.isSaving"
         aria-label="Close panel"
-        title="Close"
+        :title="props.isSaving ? 'Saving...' : 'Close'"
       >
         <IconClose :size="16" />
       </ui-button>

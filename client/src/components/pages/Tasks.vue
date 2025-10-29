@@ -6,8 +6,8 @@ import { useBoard } from '../../composables/useBoard'
 import { useToast } from '../../composables/useNotification'
 import { useAuth } from '../../composables/useAuth'
 import PageLayout from '../wrappers/PageLayout.vue'
-import TasksColumns from '../common/tasks/TasksColumns.vue'
-import TaskDetailsModal from '../common/tasks/TaskDetailsModal.vue'
+import TasksColumns from './tasks/TasksColumns.vue'
+import TaskDetailsModal from './tasks/TaskDetailsModal.vue'
 import type { Task, TaskStatus } from '../../../../shared/types'
 
 const router = useRouter()
@@ -17,7 +17,7 @@ const toast = useToast()
 // Composables
 const { user } = useAuth()
 const { join, leave, subscribeToEvents: subscribeBoardEvents, unsubscribeFromEvents: unsubscribeBoardEvents } = useBoard()
-const { tasks, todoTasks, inProgressTasks, doneTasks, loading, selectedTask, fetch, create, update, remove, subscribeToEvents: subscribeToTasksEvents, unsubscribeFromEvents: unsubscribeFromTasksEvents } = useTasks()
+const { tasks, todoTasks, inProgressTasks, doneTasks, loading, selectedTask, fetch, create, update, remove, move, subscribeToEvents: subscribeToTasksEvents, unsubscribeFromEvents: unsubscribeFromTasksEvents } = useTasks()
 
 onMounted(async () => {
   try {
@@ -134,10 +134,10 @@ const handleTaskDeleteFromCard = async (taskId: string) => {
 
 const handleTaskMoved = async (taskId: string, newStatus: string, newPosition: number) => {
   try {
-    await update(taskId, { status: newStatus as TaskStatus })
-    console.log('Task moved:', taskId, newStatus, newPosition)
+    await move(taskId, newStatus as TaskStatus, newPosition)
   } catch (err) {
     console.error('Task move error:', err)
+    toast.error('Failed to move task')
   }
 }
 </script>

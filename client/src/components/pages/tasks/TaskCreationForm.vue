@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { uiButton, uiInput, uiCard } from '../ui'
-import { IconPlus } from '../icons'
+import { uiButton, uiInput, uiCard } from '../../common/ui'
+import { IconPlus } from '../../common/icons'
 
 const props = defineProps<{
   status: string

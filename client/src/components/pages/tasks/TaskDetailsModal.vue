@@ -27,6 +27,10 @@ const taskStatus = ref<TaskStatus>('todo')
 // Auto-save timer
 let autoSaveTimer: ReturnType<typeof setTimeout> | null = null
 
+// Track if save is in progress
+const isSaving = ref(false)
+const isClosing = ref(false)
+
 // Sync local state with task prop when task ID changes or modal opens
 watch(() => props.task?.id, (newId, oldId) => {
   if (props.modelValue && props.task && (newId !== oldId || !oldId)) {
@@ -42,6 +46,9 @@ watch(() => props.modelValue, (isOpen) => {
     taskTitle.value = props.task.title || ''
     taskDescription.value = props.task.description || ''
     taskStatus.value = props.task.status || 'todo'
+    // Reset saving states when modal opens
+    isSaving.value = false
+    isClosing.value = false
   }
 })
 
@@ -62,10 +69,38 @@ const scheduleAutoSave = () => {
   // Set new timer for 3 seconds
   autoSaveTimer = setTimeout(() => {
     if (props.task) {
+      isSaving.value = true
       emit('autoSave', taskTitle.value, taskDescription.value, taskStatus.value)
+      // Clear saving state after a short delay to allow save to complete
+      setTimeout(() => {
+        isSaving.value = false
+      }, 500)
     }
     autoSaveTimer = null
   }, 3000)
+}
+
+// Trigger save immediately (used when closing with unsaved changes)
+const triggerSaveImmediately = (): Promise<void> => {
+  return new Promise((resolve) => {
+    // Clear any pending timer
+    if (autoSaveTimer) {
+      clearTimeout(autoSaveTimer)
+      autoSaveTimer = null
+    }
+
+    if (props.task && hasChanges.value) {
+      isSaving.value = true
+      emit('autoSave', taskTitle.value, taskDescription.value, taskStatus.value)
+      // Wait a bit for save to complete before resolving
+      setTimeout(() => {
+        isSaving.value = false
+        resolve()
+      }, 500)
+    } else {
+      resolve()
+    }
+  })
 }
 
 const handleTitleUpdate = (value: string) => {
@@ -92,20 +127,41 @@ const handleSave = () => {
     clearTimeout(autoSaveTimer)
     autoSaveTimer = null
   }
+  isSaving.value = true
   emit('save', taskTitle.value, taskDescription.value, taskStatus.value)
+  // Clear saving state after a short delay
+  setTimeout(() => {
+    isSaving.value = false
+  }, 500)
 }
 
 const handleDelete = () => {
   emit('delete')
 }
 
-const close = () => {
+const close = async () => {
+  // Prevent closing if save is in progress
+  if (isSaving.value || isClosing.value) {
+    return
+  }
+
+  // If there are unsaved changes, save them first before closing
+  if (hasChanges.value) {
+    isClosing.value = true
+    await triggerSaveImmediately()
+    isClosing.value = false
+  }
+
   // Cancel any pending auto-save when closing
   if (autoSaveTimer) {
     clearTimeout(autoSaveTimer)
     autoSaveTimer = null
   }
-  emit('update:modelValue', false)
+
+  // Only close if not currently saving
+  if (!isSaving.value) {
+    emit('update:modelValue', false)
+  }
 }
 
 // Check if there are unsaved changes
@@ -139,7 +195,8 @@ watch(() => props.modelValue, (isOpen) => {
       <div
         v-if="modelValue"
         class="fixed inset-0 bg-black/30 backdrop-blur-md z-40"
-        @click="close"
+        :class="{ 'pointer-events-none cursor-wait': isSaving || isClosing }"
+        @click="!isSaving && !isClosing && close()"
       />
     </Transition>
 
@@ -153,6 +210,7 @@ watch(() => props.modelValue, (isOpen) => {
         <!-- Header -->
         <TaskDetailsModalHeader 
           :has-changes="hasChanges"
+          :is-saving="isSaving || isClosing"
           @close="close"
           @save="handleSave"
           @delete="handleDelete"

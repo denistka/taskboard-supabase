@@ -55,10 +55,16 @@ export function useTaskDragAndDrop(
 
   const getDropPosition = (event: DragEvent, container: HTMLElement): number => {
     const taskElements = Array.from(container.querySelectorAll('[data-task-id]'))
+      .filter(el => {
+        const taskId = (el as HTMLElement).dataset.taskId
+        // Exclude the dragged task from position calculation
+        return taskId !== draggedTaskId.value
+      }) as HTMLElement[]
+    
     const y = event.clientY
     
     for (let i = 0; i < taskElements.length; i++) {
-      const element = taskElements[i] as HTMLElement
+      const element = taskElements[i]
       const rect = element.getBoundingClientRect()
       const midpoint = rect.top + rect.height / 2
       

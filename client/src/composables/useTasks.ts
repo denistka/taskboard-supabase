@@ -91,14 +91,46 @@ export function useTasks() {
     if (!task) return
 
     const oldStatus = task.status
-    const oldPosition = task.position
 
-    task.status = newStatus
-    task.position = newPosition
-
-    const affectedTasks = tasks.value
+    // Store original states for rollback
+    const originalStates = tasks.value
       .filter(t => t.status === newStatus || t.status === oldStatus)
-      .map(t => ({ id: t.id, status: t.status, position: t.position, version: t.version }))
+      .map(t => ({ id: t.id, status: t.status, position: t.position }))
+
+    // Get all tasks that will be affected (same status or old status), excluding the moved task
+    // Sort by position to maintain correct order
+    const tasksInNewStatus = tasks.value
+      .filter(t => t.status === newStatus && t.id !== taskId)
+      .sort((a, b) => a.position - b.position)
+    const tasksInOldStatus = tasks.value
+      .filter(t => t.status === oldStatus && t.id !== taskId)
+      .sort((a, b) => a.position - b.position)
+
+    // Recalculate positions for tasks in the new status column
+    const reorderedNewStatus = [...tasksInNewStatus]
+    reorderedNewStatus.splice(newPosition, 0, task)
+    reorderedNewStatus.forEach((t, index) => {
+      t.position = index
+      if (t.status !== newStatus) {
+        t.status = newStatus
+      }
+    })
+
+    // Recalculate positions for tasks in the old status column (if different)
+    if (oldStatus !== newStatus) {
+      tasksInOldStatus.forEach((t, index) => {
+        t.position = index
+      })
+    }
+
+    // Update the moved task (position is already set in the forEach above)
+    task.status = newStatus
+
+    // Collect all affected tasks with their updated positions
+    const affectedTasks = [
+      ...reorderedNewStatus,
+      ...(oldStatus !== newStatus ? tasksInOldStatus : [])
+    ].map(t => ({ id: t.id, board_id: t.board_id, status: t.status, position: t.position, version: t.version }))
 
     try {
       await send('task:move', {
@@ -106,8 +138,14 @@ export function useTasks() {
         tasks: affectedTasks
       }, getToken()!)
     } catch (err) {
-      task.status = oldStatus
-      task.position = oldPosition
+      // Revert on error
+      originalStates.forEach(original => {
+        const t = tasks.value.find(tt => tt.id === original.id)
+        if (t) {
+          t.status = original.status
+          t.position = original.position
+        }
+      })
       throw err
     }
   }

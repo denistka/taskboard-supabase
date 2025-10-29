@@ -86,18 +86,44 @@ export class TaskManager extends BaseManager {
     return task?.board_id || ''
   }
 
-  async move(tasks: Array<{ id: string; status: TaskStatus; position: number; version: number }>): Promise<void> {
-    const updates = tasks.map(t => ({
-      id: t.id,
-      status: t.status,
-      position: t.position,
-      version: t.version + 1,
-      updated_at: new Date().toISOString()
-    }))
+  async move(tasks: Array<{ id: string; board_id: string; status: TaskStatus; position: number; version: number }>): Promise<void> {
+    // Fetch existing tasks to preserve all fields
+    const taskIds = tasks.map(t => t.id)
+    const { data: existingTasks, error: fetchError } = await this.supabase
+      .from('tasks')
+      .select('id, board_id, title, description, status, assigned_to, created_by, position, version, created_at, updated_at')
+      .in('id', taskIds)
+
+    if (fetchError) throw fetchError
+
+    // Create a map of existing tasks for quick lookup
+    const existingMap = new Map(existingTasks?.map(t => [t.id, t]) || [])
+
+    // Merge updates with existing task data
+    const updates = tasks.map(t => {
+      const existing = existingMap.get(t.id)
+      if (!existing) {
+        throw new Error(`Task ${t.id} not found`)
+      }
+      
+      return {
+        id: t.id,
+        board_id: t.board_id,
+        title: existing.title,
+        description: existing.description,
+        status: t.status,
+        assigned_to: existing.assigned_to,
+        created_by: existing.created_by,
+        position: t.position,
+        version: t.version + 1,
+        created_at: existing.created_at,
+        updated_at: new Date().toISOString()
+      }
+    })
 
     const { error } = await this.supabase
       .from('tasks')
-      .upsert(updates)
+      .upsert(updates, { onConflict: 'id' })
 
     if (error) throw error
   }

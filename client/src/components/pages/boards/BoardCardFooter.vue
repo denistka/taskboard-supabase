@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { uiBadge } from '../ui'
+import { uiBadge } from '../../common/ui'
 import BoardActionButtons from './BoardActionButtons.vue'
 import BoardDeleteConfirmation from './BoardDeleteConfirmation.vue'
 

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { uiButton, uiBadge, uiCard } from '../ui'
-import { IconPlus, IconClose } from '../icons'
+import { uiButton, uiBadge, uiCard } from '../../common/ui'
+import { IconPlus, IconClose } from '../../common/icons'
 
 defineProps<{
   title: string

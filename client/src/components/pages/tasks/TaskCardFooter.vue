@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Task } from '../../../../../shared/types'
-import { uiAvatar, uiButton } from '../ui'
-import { IconTrash } from '../icons'
+import { uiAvatar, uiButton } from '../../common/ui'
+import { IconTrash } from '../../common/icons'
 import TaskDeleteConfirmation from './TaskDeleteConfirmation.vue'
 
 interface Props {

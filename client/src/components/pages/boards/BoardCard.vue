@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, onUnmounted } from 'vue'
 import type { BoardWithRole } from '../../../../../shared/types'
-import { uiCard } from '../ui'
+import { uiCard } from '../../common/ui'
 import { BoardCardHeader, BoardCardFooter, BoardJoinRequestsOverlay } from '.'
 
 interface Props {

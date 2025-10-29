@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { uiButton, uiAvatar } from '../ui'
-import { IconClose, IconCheckCircle, IconXCircle } from '../icons'
+import { uiButton, uiAvatar } from '../../common/ui'
+import { IconClose, IconCheckCircle, IconXCircle } from '../../common/icons'
 
 interface JoinRequest {
   id: string

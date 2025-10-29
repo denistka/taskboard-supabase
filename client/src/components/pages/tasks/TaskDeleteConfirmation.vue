@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { uiButton } from '../ui'
-import { IconXCircle } from '../icons'
+import { uiButton } from '../../common/ui'
+import { IconXCircle } from '../../common/icons'
 
 interface Emits {
   (e: 'confirm', event: Event): void

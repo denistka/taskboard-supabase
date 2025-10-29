@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { uiButton } from '../ui'
+import { uiButton } from '../../common/ui'
 
 interface Emits {
   (e: 'delete'): void

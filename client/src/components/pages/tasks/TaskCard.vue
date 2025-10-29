@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onUnmounted } from 'vue'
 import type { Task } from '../../../../../shared/types'
-import { uiCard } from '../ui'
+import { uiCard } from '../../common/ui'
 import { TaskCardHeader, TaskCardFooter } from '.'
 
 interface Props {
