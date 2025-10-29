@@ -230,12 +230,20 @@ export class MessageHandler {
           break
         case 'presence:update':
           if (!user) throw new Error('Not authenticated')
+          const wsId = (ws as any)._id
           this.presence.update(
-            (ws as any)._id,
+            wsId,
             payload.context,
             payload.contextId || null,
             payload.eventData || {}
           )
+          // Обновляем активность для board при действиях с задачами (drag task и т.д.)
+          if (payload.context === 'board' && payload.contextId) {
+            this.presence.touchContextActivity(wsId, payload.context, payload.contextId)
+          }
+          // Получить обновленный список пользователей и отправить всем
+          const updatedUsers = this.presence.getByContext(payload.context, payload.contextId || null)
+          this.broadcastPresenceUpdate(payload.context, payload.contextId || null, updatedUsers)
           result = { message: 'Presence updated' }
           break
         case 'presence:leave':
@@ -283,9 +291,22 @@ export class MessageHandler {
       }
 
       // Update user activity AFTER action completed
-      if (user && !type.startsWith('auth:') && !type.includes('presence')) {
-        // Activity tracking is now handled by heartbeat in PresenceManager
-        // No need for explicit touch calls
+      // Обновляем активность при любых действиях через WS
+      if (user) {
+        const wsId = (ws as any)._id
+        const connData = this.conn.get(ws)
+        
+        // Для app-level активности - обновляем только app контекст
+        if (!type.startsWith('auth:') && !type.startsWith('presence:')) {
+          this.presence.touchAppActivity(wsId)
+        }
+        
+        // Для board-level активности - обновляем конкретный board
+        // Только для действий на board (task:*, board:*), но НЕ для presence:update
+        // presence:update обрабатывается отдельно внутри case 'presence:update'
+        if (connData?.boardId && !type.startsWith('presence:')) {
+          this.presence.touchContextActivity(wsId, 'board', connData.boardId)
+        }
       }
 
       this.conn.send(ws, { id, success: true, data: result })

@@ -69,7 +69,7 @@ wss.on('connection', (ws) => {
   })
 })
 
-// Broadcast presence updates every 30 seconds to sync active/inactive status
+// Broadcast presence updates every 5 seconds to sync active/inactive status
 setInterval(() => {
   // App presence
   const appUsers = presence.getByContext('app', null)
@@ -95,6 +95,6 @@ setInterval(() => {
       }, boardId)
     }
   })
-}, 30 * 1000)
+}, 5 * 1000)
 
 console.log(`[WS] Server running on ws://localhost:${config.port}`)

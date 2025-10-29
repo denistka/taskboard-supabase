@@ -76,6 +76,11 @@ export function usePresenceContext(context: string) {
 
   const update = async (contextId: string | null, eventData: Record<string, any>) => {
     try {
+      // Если currentContextId не установлен, устанавливаем его при первом update
+      if (currentContextId.value === null && contextId !== null) {
+        currentContextId.value = contextId
+      }
+      
       await send(
         'presence:update',
         { context, contextId, eventData },
@@ -113,6 +118,11 @@ export function usePresenceContext(context: string) {
     on('presence:updated', (data: { context: string; contextId: string | null; users: Presence[] }) => {
       // Only update if this is our context
       if (data.context === context) {
+        // Если currentContextId еще не установлен, устанавливаем его из события
+        if (currentContextId.value === null && data.contextId !== null) {
+          currentContextId.value = data.contextId
+        }
+        
         // If contextId is null, match null contexts
         // Otherwise match exact contextId
         if (data.contextId === currentContextId.value) {

@@ -5,27 +5,27 @@
 /* Global CSS Variables */
 :root {
   /* Drag and Drop Indicator Colors */
-  --drag-indicator-primary: rgb(99, 102, 241);
-  --drag-indicator-secondary: rgb(139, 92, 246);
-  --drag-indicator-primary-alpha: rgba(99, 102, 241, 0.8);
-  --drag-indicator-secondary-alpha: rgba(139, 92, 246, 0.4);
+  --drag-indicator-primary: rgba(99, 101, 241, 0.325);
+  --drag-indicator-secondary: rgba(138, 92, 246, 0.269);
+  --drag-indicator-primary-alpha: rgba(99, 101, 241, 0.327);
+  --drag-indicator-secondary-alpha: rgba(138, 92, 246, 0.117);
   
   /* Drop Indicator for Empty Columns */
-  --drop-indicator-bg-start: rgba(99, 102, 241, 0.15);
-  --drop-indicator-bg-end: rgba(139, 92, 246, 0.15);
-  --drop-indicator-border: rgba(99, 102, 241, 0.5);
-  --drop-indicator-border-hover: rgba(139, 92, 246, 0.7);
-  --drop-indicator-shadow: rgba(99, 102, 241, 0.3);
+  --drop-indicator-bg-start: rgba(99, 101, 241, 0.087);
+  --drop-indicator-bg-end: rgba(138, 92, 246, 0.048);
+  --drop-indicator-border: rgba(99, 101, 241, 0.229);
+  --drop-indicator-border-hover: rgba(138, 92, 246, 0.329);
+  --drop-indicator-shadow: rgba(99, 101, 241, 0.184);
   
   /* Drag State Variables */
-  --drag-primary: rgb(99, 102, 241);
-  --drag-secondary: rgb(139, 92, 246);
-  --drag-shadow-dark: rgba(0, 0, 0, 0.4);
-  --drag-shadow-primary: rgba(99, 102, 241, 0.3);
-  --drag-ghost-bg-start: rgba(99, 102, 241, 0.1);
-  --drag-ghost-bg-end: rgba(139, 92, 246, 0.1);
-  --drag-ghost-border: rgba(99, 102, 241, 0.4);
-  --drag-over-bg: rgba(99, 102, 241, 0.1);
+  --drag-primary: rgba(99, 101, 241, 0.156);
+  --drag-secondary: rgba(138, 92, 246, 0.251);
+  --drag-shadow-dark: rgba(0, 0, 0, 0.197);
+  --drag-shadow-primary: rgba(99, 101, 241, 0.149);
+  --drag-ghost-bg-start: rgba(99, 101, 241, 0.046);
+  --drag-ghost-bg-end: rgba(138, 92, 246, 0.072);
+  --drag-ghost-border: rgba(99, 101, 241, 0.177);
+  --drag-over-bg: rgba(99, 101, 241, 0.045);
   
   /* Drag Opacity Values */
   --drag-opacity: 0.8;

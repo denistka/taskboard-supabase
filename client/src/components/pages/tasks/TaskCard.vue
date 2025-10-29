@@ -3,6 +3,8 @@ import { ref, computed, watch, onUnmounted } from 'vue'
 import type { Task } from '../../../../../shared/types'
 import { uiCard } from '../../common/ui'
 import { TaskCardHeader, TaskCardFooter } from '.'
+import { usePresence } from '../../../composables/presence/usePresence'
+import { useAuth } from '../../../composables/useAuth'
 
 interface Props {
   task: Task
@@ -17,6 +19,25 @@ interface Emits {
 
 const props = defineProps<Props>()
 const emit = defineEmits<Emits>()
+const { user } = useAuth()
+// Используем кэшированный экземпляр, который уже подписан и присоединен
+const presence = usePresence().context('board')
+
+// Check if this task is being dragged by another user
+const draggingUser = computed(() => {
+  for (const presenceData of presence.users.value) {
+    // Skip current user
+    if (presenceData.user_id === user.value?.id) continue
+    
+    const eventData = presenceData.event_data || {}
+    if (eventData.eventType === 'task-moving-started' && eventData.taskId === props.task.id) {
+      return {
+        userName: presenceData.profile?.full_name || presenceData.profile?.email || 'Unknown'
+      }
+    }
+  }
+  return null
+})
 
 // Delete confirmation state
 const isConfirmingDelete = ref(false)
@@ -95,9 +116,24 @@ const handleCardClick = (e: MouseEvent) => {
   emit('click')
 }
 
-// Handle drag start
-const handleDragStart = (e: DragEvent) => {
+// Handle drag start - send presence event
+const handleDragStart = async (e: DragEvent) => {
   emit('dragstart', e)
+  // Notify others that we're dragging this task
+  await presence.update(props.task.board_id, {
+    eventType: 'task-moving-started',
+    taskId: props.task.id
+  })
+}
+
+// Handle drag end - clear presence event
+const handleDragEnd = async (e: DragEvent) => {
+  emit('dragend', e)
+  // Notify others that we've stopped dragging
+  await presence.update(props.task.board_id, {
+    eventType: 'task-moving-ended',
+    taskId: props.task.id
+  })
 }
 
 // Cleanup on unmount
@@ -119,9 +155,18 @@ onUnmounted(() => {
     draggable="true"
     @click="handleCardClick"
     @dragstart="handleDragStart"
-    @dragend="$emit('dragend', $event)"
+    @dragend="handleDragEnd"
     tabindex="-1"
   >
+    <!-- Red overlay when another user is dragging this task -->
+    <div
+      v-if="draggingUser"
+      class="absolute inset-0 bg-red-500/20 dark:bg-red-500/30 border-2 border-red-500 dark:border-red-400 rounded-lg z-50 flex items-center justify-center pointer-events-none"
+    >
+      <div class="bg-red-500 dark:bg-red-600 text-white px-3 py-1.5 rounded-md text-sm font-medium shadow-lg">
+        {{ draggingUser.userName }} is moving task
+      </div>
+    </div>
     <!-- Header: Title and Description -->
     <TaskCardHeader
       :title="task.title"

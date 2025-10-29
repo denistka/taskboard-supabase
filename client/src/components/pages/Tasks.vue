@@ -51,6 +51,7 @@ onMounted(async () => {
     
     await join(boardId)
     await fetch(boardId)
+    
   } catch (err) {
     console.error('Board init error:', err)
     router.push('/boards')
@@ -69,6 +70,7 @@ onUnmounted(async () => {
   unsubscribeFromTasksEvents()
   unsubscribeBoardEvents()
 })
+
 
 // Task event handlers
 const handleTaskClick = (task: Task) => {

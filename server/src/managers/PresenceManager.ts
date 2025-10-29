@@ -97,8 +97,16 @@ export class PresenceManager extends BaseManager {
     
     if (!data) return false
     
+    const now = Date.now()
     data.eventData = { ...data.eventData, ...eventData }
-    data.lastSeen = Date.now()
+    data.lastSeen = now
+    
+    // Обновляем lastActivity только если это heartbeat или явное обновление активности
+    // В остальных случаях активность обновляется через touchAppActivity/touchContextActivity
+    if (eventData.heartbeat === true) {
+      data.lastActivity = now
+    }
+    
     return true
   }
 
@@ -162,7 +170,7 @@ export class PresenceManager extends BaseManager {
    */
   getByContext(context: string, contextId: string | null = null): Presence[] {
     const fiveMinutesAgo = Date.now() - 5 * 60 * 1000
-    const thirtySecondsAgo = Date.now() - 30 * 1000
+    const fiveSecondsAgo = Date.now() - 5 * 1000
     
     const presenceList: Presence[] = []
     
@@ -178,13 +186,44 @@ export class PresenceManager extends BaseManager {
         context_id: data.contextId,
         last_seen: new Date(data.lastSeen).toISOString(),
         last_activity: new Date(data.lastActivity).toISOString(),
-        is_active: data.lastActivity > thirtySecondsAgo,
+        is_active: data.lastActivity > fiveSecondsAgo,
         event_data: data.eventData,
         profile: profile || this.createFallbackProfile(data.user)
       })
     }
     
     return presenceList
+  }
+
+  /**
+   * Обновить app-level активность (только для app контекста)
+   */
+  touchAppActivity(socketId: string): void {
+    const contexts = this.socketToContexts.get(socketId)
+    if (!contexts) return
+    
+    const now = Date.now()
+    // Обновляем только app контекст (context = 'app', contextId = null)
+    for (const contextKey of contexts) {
+      const data = this.presence.get(contextKey)
+      if (data && data.context === 'app' && data.contextId === null) {
+        data.lastActivity = now
+        data.lastSeen = now
+      }
+    }
+  }
+
+  /**
+   * Обновить активность для конкретного контекста
+   */
+  touchContextActivity(socketId: string, context: string, contextId: string | null): void {
+    const contextKey = this.getContextKey(socketId, context, contextId)
+    const data = this.presence.get(contextKey)
+    if (data) {
+      const now = Date.now()
+      data.lastActivity = now
+      data.lastSeen = now
+    }
   }
 
   /**
