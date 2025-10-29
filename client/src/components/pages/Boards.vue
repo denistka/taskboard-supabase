@@ -4,18 +4,15 @@ import { useRouter, useRoute } from 'vue-router'
 import { useBoards } from '../../composables/useBoards'
 import { useToast } from '../../composables/useNotification'
 import PageLayout from '../wrappers/PageLayout.vue'
-import BoardCard from '../common/BoardCard.vue'
+import BoardCard from '../common/board-card/BoardCard.vue'
 import CreateBoardModal from '../common/CreateBoardModal.vue'
-import EditBoardModal from '../common/EditBoardModal.vue'
-import JoinRequestsModal from '../common/JoinRequestsModal.vue'
-import ConfirmModal from '../common/ConfirmModal.vue'
-import type { BoardWithRole } from '../../../../shared/types'
 
 const router = useRouter()
 const route = useRoute()
 const toast = useToast()
 const { 
   boards, 
+  isBoardCreating,
   list, 
   create, 
   update, 
@@ -24,33 +21,22 @@ const {
   leave, 
   approveJoin, 
   rejectJoin, 
-  listRequests 
+  listRequests,
+  setIsBoardCreating,
 } = useBoards()
 
 // State
 const loading = ref(true)
 
-// Create Modal State
-const showCreateModal = ref(false)
-
-// Edit Modal State
-const showEditModal = ref(false)
-const editingBoard = ref<BoardWithRole | null>(null)
-
-// Join Requests Modal State
-const showRequestsModal = ref(false)
-const loadingRequests = ref(false)
-const joinRequests = ref<any[]>([])
-
-// Confirmation Modal State
-const showConfirmModal = ref(false)
-const confirmMessage = ref('')
-const confirmAction = ref<(() => Promise<void>) | null>(null)
+// Join Requests per Board (for card overlays)
+const boardRequests = ref<Record<string, any[]>>({})
+const boardRequestsLoading = ref<Record<string, boolean>>({})
+const boardRequestsOpen = ref<Record<string, boolean>>({})
 
 // Watch for create action from header
 watch(() => route.query.action, (action) => {
   if (action === 'create') {
-    showCreateModal.value = true
+    setIsBoardCreating(true)
     // Clean up query param
     router.replace({ path: route.path, query: {} })
   }
@@ -71,44 +57,38 @@ const handleCreateBoard = async (name: string, description: string) => {
   try {
     await create(name, description)
     toast.success('Board created successfully')
-    showCreateModal.value = false
+    setIsBoardCreating(false)
   } catch (err: any) {
     toast.error(err.message || 'Failed to create board')
   }
 }
 
-const editBoard = (board: BoardWithRole) => {
-  editingBoard.value = board
-  showEditModal.value = true
-}
-
-const handleSaveBoard = async (boardId: string, data: { name: string; description: string }) => {
+// Handle board update from card inline editing
+const handleBoardUpdate = async (boardId: string, data: { name: string; description: string }) => {
   try {
     await update(boardId, data)
     toast.success('Board updated successfully')
-    showEditModal.value = false
-    editingBoard.value = null
   } catch (err: any) {
     toast.error(err.message || 'Failed to update board')
   }
 }
 
-const deleteBoard = (boardId: string) => {
-  confirmMessage.value = 'Delete this board? All tasks will be lost.'
-  confirmAction.value = async () => {
+const deleteBoard = async (boardId: string) => {
+  try {
     await remove(boardId)
     toast.success('Board deleted successfully')
+  } catch (err: any) {
+    toast.error(err.message || 'Failed to delete board')
   }
-  showConfirmModal.value = true
 }
 
-const leaveBoard = (boardId: string) => {
-  confirmMessage.value = 'Leave this board? You will need to request to join again.'
-  confirmAction.value = async () => {
+const leaveBoard = async (boardId: string) => {
+  try {
     await leave(boardId)
     toast.success('Left board successfully')
+  } catch (err: any) {
+    toast.error(err.message || 'Failed to leave board')
   }
-  showConfirmModal.value = true
 }
 
 const joinBoard = async (boardId: string) => {
@@ -120,60 +100,64 @@ const joinBoard = async (boardId: string) => {
   }
 }
 
-// Join requests handlers
-const viewRequests = async (boardId: string) => {
-  showRequestsModal.value = true
-  loadingRequests.value = true
+// Join requests handlers (for card overlay)
+const handleLoadRequests = async (boardId: string) => {
+  boardRequestsLoading.value[boardId] = true
   
   try {
     const requests = await listRequests(boardId)
-    joinRequests.value = requests
+    boardRequests.value[boardId] = requests
+    boardRequestsOpen.value[boardId] = true
   } catch (err: any) {
     toast.error(err.message || 'Failed to load requests')
   } finally {
-    loadingRequests.value = false
+    boardRequestsLoading.value[boardId] = false
   }
 }
 
-const handleApproveRequest = async (requestId: string) => {
+const handleApproveRequestInCard = async (requestId: string) => {
   try {
     await approveJoin(requestId)
-    joinRequests.value = joinRequests.value.filter(r => r.id !== requestId)
+    
+    // Remove from all board request lists
+    Object.keys(boardRequests.value).forEach(boardId => {
+      boardRequests.value[boardId] = boardRequests.value[boardId].filter(r => r.id !== requestId)
+      if (boardRequests.value[boardId].length === 0) {
+        boardRequestsOpen.value[boardId] = false
+      }
+    })
+    
     toast.success('Request approved')
   } catch (err: any) {
     toast.error(err.message || 'Failed to approve request')
   }
 }
 
-const handleRejectRequest = async (requestId: string) => {
+const handleRejectRequestInCard = async (requestId: string) => {
   try {
     await rejectJoin(requestId)
-    joinRequests.value = joinRequests.value.filter(r => r.id !== requestId)
+    
+    // Remove from all board request lists
+    Object.keys(boardRequests.value).forEach(boardId => {
+      boardRequests.value[boardId] = boardRequests.value[boardId].filter(r => r.id !== requestId)
+      if (boardRequests.value[boardId].length === 0) {
+        boardRequestsOpen.value[boardId] = false
+      }
+    })
+    
     toast.success('Request rejected')
   } catch (err: any) {
     toast.error(err.message || 'Failed to reject request')
   }
 }
 
-// Confirmation handler
-const handleConfirm = async () => {
-  if (confirmAction.value) {
-    try {
-      await confirmAction.value()
-    } catch (err: any) {
-      toast.error(err.message || 'Action failed')
-    }
-  }
-  confirmAction.value = null
-  confirmMessage.value = ''
-}
 </script>
 
 <template>
   <PageLayout>
     <!-- Main Content -->
     <template #content>
-      <div v-if="!loading" class="min-h-screen p-6">
+      <div v-if="!loading" class="w-full p-11">
         <!-- Boards Grid -->
         <div class="max-w-7xl mx-auto">
           <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
@@ -182,11 +166,16 @@ const handleConfirm = async () => {
               v-for="board in boards"
               :key="board.id"
               :board="board"
+              :joinRequests="boardRequests[board.id] || []"
+              :loadingRequests="boardRequestsLoading[board.id] || false"
               @open="openBoard"
               @delete="deleteBoard"
               @leave="leaveBoard"
               @join="joinBoard"
-              @viewRequests="viewRequests"
+              @update="handleBoardUpdate"
+              @loadRequests="handleLoadRequests"
+              @approveRequest="handleApproveRequestInCard"
+              @rejectRequest="handleRejectRequestInCard"
             />
           </div>
         </div>
@@ -197,31 +186,8 @@ const handleConfirm = async () => {
 
   <!-- Create Board Modal -->
   <CreateBoardModal
-    v-model="showCreateModal"
+    v-model="isBoardCreating"
     @create="handleCreateBoard"
-  />
-
-  <!-- Edit Board Modal -->
-  <EditBoardModal
-    v-model="showEditModal"
-    :board="editingBoard"
-    @save="handleSaveBoard"
-  />
-
-  <!-- Join Requests Modal -->
-  <JoinRequestsModal
-    v-model="showRequestsModal"
-    :requests="joinRequests"
-    :loading="loadingRequests"
-    @approve="handleApproveRequest"
-    @reject="handleRejectRequest"
-  />
-
-  <!-- Confirmation Modal -->
-  <ConfirmModal
-    v-model="showConfirmModal"
-    :message="confirmMessage"
-    @confirm="handleConfirm"
   />
 </template>
 

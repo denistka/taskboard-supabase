@@ -104,7 +104,7 @@ const handleTaskMoved = async (taskId: string, newStatus: string, newPosition: n
   <PageLayout>
     
     <template #content>
-      <div v-if="!loading">
+      <div v-if="!loading" class="w-full h-full">
         <!-- Board Columns -->
         <BoardColumns
           :todo-tasks="todoTasks"

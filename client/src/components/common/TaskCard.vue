@@ -15,9 +15,12 @@
     </p>
     <div class="flex items-center justify-between text-xs text-gray-500 dark:text-gray-500">
       <div v-if="task.profiles" class="flex items-center gap-2">
-        <div class="w-6 h-6 rounded-full bg-primary-500 flex items-center justify-center text-white font-medium text-xs">
-          {{ task.profiles.full_name?.[0] || task.profiles.email[0] }}
-        </div>
+        <ui-avatar
+          :src="task.profiles.avatar_url || undefined"
+          :initials="(task.profiles.full_name?.[0] || task.profiles.email?.[0] || '?').toUpperCase()"
+          size="xs"
+          color="bg-primary-500"
+        />
         <span class="truncate max-w-[120px]">{{ task.profiles.full_name || task.profiles.email }}</span>
       </div>
       <span>{{ formatDate(task.created_at) }}</span>
@@ -27,7 +30,8 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { Task } from '../../../shared/types'
+import type { Task } from '../../../../shared/types'
+import { uiAvatar } from './ui'
 
 const props = defineProps<{
   task: Task

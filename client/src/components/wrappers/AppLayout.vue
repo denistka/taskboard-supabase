@@ -9,7 +9,7 @@
         <slot name="header"></slot>
       </header>
 
-      <main class="relative w-full h-screen items-center justify-center overflow-y-auto overflow-x-hidden z-10">
+      <main class="relative w-full h-screen flex justify-center overflow-y-auto overflow-x-hidden z-10">
         <slot name="page-view-content"></slot>
       </main>
 

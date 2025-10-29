@@ -10,11 +10,11 @@ import AppNotifications from './components/modules/Notifications.vue'
   <app-layout>
     
     <template #bg>
-      <app-background />
+      <AppBackground />
     </template>
 
     <template #header>
-      <app-header />
+      <AppHeader />
     </template>
 
     <template #page-view-content> 
@@ -22,11 +22,11 @@ import AppNotifications from './components/modules/Notifications.vue'
     </template>
 
     <template #footer>
-      <app-footer />
+      <AppFooter />
     </template>
 
     <template #notifications>
-      <app-notifications />
+      <AppNotifications />
     </template>
 
   </app-layout>

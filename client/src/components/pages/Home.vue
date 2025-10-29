@@ -22,7 +22,7 @@ const goToBoards = () => {
 <template>
   <page-layout>
     <template #content>
-      <div class="animate-fade-in text-center max-w-4xl">
+      <div class="animate-fade-in text-center max-w-4xl p-11">
         
         <h1 class="text-6xl md:text-7xl font-bold mb-6 leading-tight">
           <span class="text-gradient-primary-accent">

@@ -5,6 +5,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from '../../composables/useAuth'
 import { usePresence } from '../../composables/presence/usePresence'
 import { useBoard } from '../../composables/useBoard'
+import { useBoards } from '../../composables/useBoards'
 import UserAppPresence from '../common/presence/UserAppPresence.vue'
 import { uiButton, uiThemeSwitcher } from '../common/ui'
 import { IconUser, IconLogout, IconArrowLeft, IconPlus } from '../common/icons'
@@ -15,6 +16,7 @@ const route = useRoute()
 const { signOut, isAuthenticated } = useAuth()
 const presence = usePresence()
 const { currentBoard } = useBoard()
+const { isBoardCreating } = useBoards()
 
 const { isDark, toggle } = useTheme()
 
@@ -50,6 +52,7 @@ const handleBack = () => {
 }
 
 const handleCreateBoard = () => {
+  if (isBoardCreating.value) return
   router.push({ path: '/boards', query: { action: 'create' } })
 }
 
@@ -99,10 +102,12 @@ const toggleTheme = () => {
       <ui-button 
         v-if="showCreateButton"
         @click="handleCreateBoard"
-        variant="shimmer"
+        :variant="isBoardCreating ? 'neon' : 'shimmer'"
         size="sm"
         color="purple"
+        :disabled="isBoardCreating"
         class="shadow-lg"
+        :title="isBoardCreating ? 'Modal is open' : 'Create new board'"
       >
         <icon-plus :size="16" />
       </ui-button>

@@ -32,7 +32,7 @@ const handleSubmit = async () => {
 <template>
   <page-layout>
     <template #content>
-      <ui-card variant="strong" padding="lg" class="w-full max-w-md shadow-2xl">
+      <ui-card variant="strong" padding="lg" class="w-full max-w-md shadow-2xl p-11">
        
           <h1 class="text-4xl font-bold text-center mb-8">
             <span class="text-gradient-primary-accent">Task Board</span>

@@ -4,6 +4,7 @@ import { useAuth } from './useAuth'
 import type { BoardWithRole, Board, JoinRequest } from '../../../shared/types'
 
 const boards = ref<BoardWithRole[]>([])
+const isBoardCreating = ref(false)
 
 export function useBoards() {
   const { send, on, off } = useWebSocket()
@@ -77,8 +78,13 @@ export function useBoards() {
     // Real-time will auto-refresh via boards:invalidate event
   }
 
+  const setIsBoardCreating = (value: boolean) => {
+    isBoardCreating.value = value
+  }
+
   return {
     boards,
+    isBoardCreating,
     list,
     create,
     update,
@@ -87,6 +93,7 @@ export function useBoards() {
     approveJoin,
     rejectJoin,
     listRequests,
-    leave
+    leave,
+    setIsBoardCreating,
   }
 }

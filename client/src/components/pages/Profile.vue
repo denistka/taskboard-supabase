@@ -90,8 +90,8 @@ const handleSaveProfile = async () => {
 <template>
   <page-layout>
     <template #content>
-      <div v-if="!loading" class="min-h-screen p-6 flex justify-center">
-          <ui-card variant="strong" padding="lg" class="shadow-lg w-full">
+      <div v-if="!loading" class="w-full p-6">
+          <ui-card variant="strong" padding="lg" class="shadow-lg w-full max-w-2xl mx-auto">
             <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">Edit Profile</h2>
             
             <div v-if="error" class="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-4 rounded-lg mb-6 text-sm">{{ error }}</div>

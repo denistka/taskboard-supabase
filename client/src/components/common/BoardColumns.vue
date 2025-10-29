@@ -52,8 +52,8 @@ const handleTaskMoved = (taskId: string, newStatus: string, newPosition: number)
 </script>
 
 <template>
-  <div class="p-6">
-    <div class="flex gap-6 overflow-x-auto pb-6">
+  <div>
+    <div class="flex gap-6 overflow-x-auto p-6">
       <TaskColumn
         v-for="column in columns"
         :key="column.status"
