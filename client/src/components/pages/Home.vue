@@ -3,7 +3,7 @@ import { useRouter } from 'vue-router'
 import { useAuth } from '../../composables/useAuth'
 
 import PageLayout from '../wrappers/PageLayout.vue'
-import FeaturesGrid from '../common/feature/FeaturesGrid.vue'
+import FeaturesGrid from '../common/home/FeaturesGrid.vue'
 import { uiButton } from '../common/ui'
 import { IconArrowRight } from '../common/icons'
 

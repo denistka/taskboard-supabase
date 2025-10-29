@@ -3,7 +3,7 @@ import { useAuth } from '../composables/useAuth'
 import HomeView from '../components/pages/Home.vue'
 import LoginView from '../components/pages/Login.vue'
 import Boards from '../components/pages/Boards.vue'
-import BoardView from '../components/pages/Board.vue'
+import TasksView from '../components/pages/Tasks.vue'
 import ProfileView from '../components/pages/Profile.vue'
 
 const router = createRouter({
@@ -29,7 +29,7 @@ const router = createRouter({
     {
       path: '/board/:id',
       name: 'board',
-      component: BoardView,
+      component: TasksView,
       meta: { requiresAuth: true }
     },
     {

@@ -6,6 +6,7 @@ import { BoardManager } from './managers/BoardManager.js'
 import { TaskManager } from './managers/TaskManager.js'
 import { AuthManager } from './managers/AuthManager.js'
 import { ProfileManager } from './managers/ProfileManager.js'
+import { CommentManager } from './managers/CommentManager.js'
 import { MessageHandler } from './MessageHandler.js'
 
 const wss = new WebSocketServer({ port: config.port })
@@ -16,7 +17,8 @@ const board = new BoardManager()
 const task = new TaskManager()
 const auth = new AuthManager()
 const profile = new ProfileManager()
-const handler = new MessageHandler(conn, presence, board, task, auth, profile)
+const comment = new CommentManager()
+const handler = new MessageHandler(conn, presence, board, task, auth, profile, comment)
 
 let connectionIdCounter = 0
 

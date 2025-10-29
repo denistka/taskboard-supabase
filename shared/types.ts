@@ -27,6 +27,16 @@ export interface Task {
   profiles?: Profile
 }
 
+export interface TaskComment {
+  id: string
+  task_id: string
+  user_id: string
+  content: string
+  created_at: string
+  updated_at: string
+  profile?: Profile
+}
+
 export interface Board {
   id: string
   name: string

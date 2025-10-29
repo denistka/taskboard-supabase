@@ -84,7 +84,7 @@ const handleSubmit = async () => {
               @click="isSignUp = !isSignUp"
               color="blue"
               size="sm"
-              variant="basic"
+              variant="neon"
               class="w-full text-center"
             >
               {{ isSignUp ? 'Already have an account?' : 'Need an account?' }}

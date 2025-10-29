@@ -6,6 +6,7 @@ import { BoardManager } from './managers/BoardManager.js'
 import { TaskManager } from './managers/TaskManager.js'
 import { AuthManager } from './managers/AuthManager.js'
 import { ProfileManager } from './managers/ProfileManager.js'
+import { CommentManager } from './managers/CommentManager.js'
 
 export class MessageHandler {
   constructor(
@@ -14,7 +15,8 @@ export class MessageHandler {
     private board: BoardManager,
     private task: TaskManager,
     private auth: AuthManager,
-    private profile: ProfileManager
+    private profile: ProfileManager,
+    private comment: CommentManager
   ) {}
 
   async handle(ws: WebSocket, message: any): Promise<void> {
@@ -125,7 +127,7 @@ export class MessageHandler {
           break
         case 'board:join':
           if (!user) throw new Error('Not authenticated')
-          this.conn.update(ws, { user, boardId: payload.boardId })
+          this.conn.update(ws, { user: user as any, boardId: payload.boardId })
           const joinedUsers = await this.presence.add((ws as any)._id, user as any, 'board', payload.boardId)
           // Broadcast to ALL clients in the board (including the sender)
           this.broadcastPresenceUpdate('board', payload.boardId, joinedUsers)
@@ -172,6 +174,60 @@ export class MessageHandler {
           await this.task.move(payload.tasks)
           this.conn.broadcastToBoard({ type: 'tasks:moved', data: { tasks: payload.tasks, boardId: payload.boardId } }, payload.boardId, ws)
           result = { tasks: payload.tasks }
+          break
+
+        // Comments
+        case 'comment:fetch':
+          result = { comments: await this.comment.fetchByTask(payload.taskId) }
+          break
+        case 'comment:create':
+          if (!user) throw new Error('Not authenticated')
+          const comment = await this.comment.create(payload.taskId, user.id, payload.content)
+          // Get board_id from task to broadcast
+          const { data: taskData } = await this.task['supabase']
+            .from('tasks')
+            .select('board_id')
+            .eq('id', payload.taskId)
+            .single()
+          if (taskData) {
+            this.conn.broadcastToBoard({ type: 'comment:created', data: { comment, taskId: payload.taskId } }, taskData.board_id, ws)
+          }
+          result = { comment }
+          break
+        case 'comment:update':
+          if (!user) throw new Error('Not authenticated')
+          const updatedComment = await this.comment.update(payload.commentId, user.id, payload.content)
+          // Get board_id from task to broadcast
+          const { data: taskDataForUpdate } = await this.task['supabase']
+            .from('tasks')
+            .select('board_id')
+            .eq('id', updatedComment.task_id)
+            .single()
+          if (taskDataForUpdate) {
+            this.conn.broadcastToBoard({ type: 'comment:updated', data: { comment: updatedComment } }, taskDataForUpdate.board_id, ws)
+          }
+          result = { comment: updatedComment }
+          break
+        case 'comment:delete':
+          if (!user) throw new Error('Not authenticated')
+          // Get task_id before deletion to get board_id for broadcast
+          const { data: commentData } = await this.comment['supabase']
+            .from('task_comments')
+            .select('task_id')
+            .eq('id', payload.commentId)
+            .single()
+          await this.comment.delete(payload.commentId, user.id)
+          if (commentData) {
+            const { data: taskDataForDelete } = await this.task['supabase']
+              .from('tasks')
+              .select('board_id')
+              .eq('id', commentData.task_id)
+              .single()
+            if (taskDataForDelete) {
+              this.conn.broadcastToBoard({ type: 'comment:deleted', data: { commentId: payload.commentId, taskId: commentData.task_id } }, taskDataForDelete.board_id, ws)
+            }
+          }
+          result = { message: 'Comment deleted' }
           break
 
         // Universal Presence API

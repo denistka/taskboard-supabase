@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { uiButton, uiInput } from './ui'
-import { IconClose, IconPlus } from './icons'
+import { uiButton, uiInput } from '../ui'
+import { IconClose, IconPlus } from '../icons'
 
 interface Props {
   modelValue: boolean
@@ -76,16 +76,6 @@ const handleClose = () => {
                 aria-label="Create board"
             >
               <IconPlus :size="16" />
-            </ui-button>
-
-            <ui-button
-                @click="handleClose"
-                color="red"
-                size="xs"
-                variant="neon"
-                aria-label="Close"
-            >
-              <IconClose :size="16" />
             </ui-button>
 
           </div>

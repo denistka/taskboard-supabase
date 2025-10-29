@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import TaskColumn from './TaskColumn.vue'
-import type { Task, TaskStatus } from '../../../../shared/types'
+import TasksColumn from './TasksColumn.vue'
+import type { Task, TaskStatus } from '../../../../../shared/types'
 
 interface ColumnConfig {
   title: string
@@ -18,6 +18,7 @@ interface Emits {
   (e: 'taskClick', task: Task): void
   (e: 'createTask', status: string, title: string, description: string): void
   (e: 'taskMoved', taskId: string, newStatus: string, newPosition: number): void
+  (e: 'taskDelete', taskId: string): void
 }
 
 defineProps<Props>()
@@ -49,23 +50,26 @@ const handleCreateTask = (status: string, title: string, description: string) =>
 const handleTaskMoved = (taskId: string, newStatus: string, newPosition: number) => {
   emit('taskMoved', taskId, newStatus, newPosition)
 }
+
+const handleTaskDelete = (taskId: string) => {
+  emit('taskDelete', taskId)
+}
 </script>
 
-<template>
-  <div>
-    <div class="flex gap-6 overflow-x-auto p-6">
-      <TaskColumn
-        v-for="column in columns"
-        :key="column.status"
-        :title="column.title"
-        :status="column.status"
-        :color="column.color"
-        :tasks="getTasksForColumn(column.status, $props)"
-        @taskClick="handleTaskClick"
-        @createTask="handleCreateTask"
-        @taskMoved="handleTaskMoved"
-      />
-    </div>
+<template> 
+  <div class="flex gap-6 w-full h-full overflow-x-auto p-6 pb-0">
+    <TasksColumn
+      v-for="column in columns"
+      :key="column.status"
+      :title="column.title"
+      :status="column.status"
+      :color="column.color"
+      :tasks="getTasksForColumn(column.status, $props)"
+      @taskClick="handleTaskClick"
+      @createTask="handleCreateTask"
+      @taskMoved="handleTaskMoved"
+      @taskDelete="handleTaskDelete"
+    />
   </div>
 </template>
 

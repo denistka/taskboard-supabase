@@ -1,11 +1,11 @@
 // Centralized icon component with switch case
 export { default as Icon } from './Icon.vue'
+export type { IconName } from './types'
 
 // Wrapper components for backwards compatibility
 import Icon from './Icon.vue'
 import { defineComponent, h } from 'vue'
-
-type IconName = 'plus' | 'edit' | 'trash' | 'bell' | 'externalLink' | 'userPlus' | 'user' | 'clock' | 'arrowRight' | 'arrowLeft' | 'close' | 'logout' | 'sun' | 'moon' | 'checkCircle' | 'xCircle' | 'exclamationTriangle' | 'infoCircle'
+import type { IconName } from './types'
 
 const createIconWrapper = (iconName: IconName): ReturnType<typeof defineComponent> => {
   // Convert to PascalCase: 'externalLink' -> 'IconExternalLink'
@@ -42,3 +42,4 @@ export const IconCheckCircle = createIconWrapper('checkCircle')
 export const IconXCircle = createIconWrapper('xCircle')
 export const IconExclamationTriangle = createIconWrapper('exclamationTriangle')
 export const IconInfoCircle = createIconWrapper('infoCircle')
+export const IconFileText = createIconWrapper('fileText')
