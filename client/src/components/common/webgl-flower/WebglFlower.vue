@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { 
   DeltaTimeCalculator, 
   ParticleManager, 
@@ -15,6 +15,10 @@ const deltaTimeCalculator = new DeltaTimeCalculator()
 const particleManager = new ParticleManager()
 let webglRenderer: WebGLRenderer | null = null
 let animationId: number | null = null
+
+const props = withDefaults(defineProps<{ currentSpeed?: number }>(), {
+  currentSpeed: 1,
+})
 
 const animationConfig = computed((): AnimationConfig => {
       return { opacity: 0.25, scale: 1.4, speed: 1.0 }
@@ -63,7 +67,6 @@ const stopAnimation = () => {
 
 onMounted(() => {
   deltaTimeCalculator.startMagneticSystem()
-  deltaTimeCalculator.setCurrentSpeed(1)
   startAnimation()
 })
 
@@ -71,6 +74,16 @@ onUnmounted(() => {
   stopAnimation()
   deltaTimeCalculator.cleanup()
 })
+
+watch(
+  () => props.currentSpeed,
+  (newSpeed) => {
+    if (typeof newSpeed === 'number') {
+      deltaTimeCalculator.setCurrentSpeed(newSpeed)
+    }
+  },
+  { immediate: true }
+)
 </script>
 
 <template>
