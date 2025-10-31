@@ -76,7 +76,8 @@ COPY --from=client-builder /app/client/dist ./nginx/html
 # Copy nginx configuration
 COPY nginx.conf /etc/nginx/nginx.conf
 
-# Expose port 80 (nginx will proxy to server on 3001)
+# Expose port (default 80, Railway will override with PORT env var)
+# Note: Railway provides PORT env var at runtime
 EXPOSE 80
 
 # Start script
