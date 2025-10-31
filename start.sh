@@ -44,7 +44,9 @@ fi
 
 if [ -n "$SERVER_SCRIPT" ]; then
     echo "Found server file at $SERVER_SCRIPT, starting..."
-    node "$SERVER_SCRIPT" &
+    # Server should always listen on port 3001 internally (nginx listens on Railway's PORT)
+    # Set WEBSOCKET_PORT for the server, or explicitly set PORT=3001 for this process only
+    PORT=3001 node "$SERVER_SCRIPT" &
     SERVER_PID=$!
 fi
 
