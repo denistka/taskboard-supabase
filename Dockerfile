@@ -8,17 +8,20 @@ WORKDIR /app
 # Install pnpm
 RUN corepack enable && corepack prepare pnpm@latest --activate
 
-# Copy client package files
+# Copy package files and install dependencies
 COPY client/package.json client/pnpm-lock.yaml ./client/
-
-# Install client dependencies
 WORKDIR /app/client
 RUN pnpm install --frozen-lockfile
 
+# Copy shared types to /app/shared (before copying client files)
+WORKDIR /app
+COPY shared ./shared
+
 # Copy client source files
-COPY client/ ./
+COPY client/ ./client/
 
 # Build client
+WORKDIR /app/client
 RUN pnpm build
 
 # Stage 2: Build the server
@@ -36,12 +39,16 @@ COPY server/package.json server/pnpm-lock.yaml ./server/
 WORKDIR /app/server
 RUN pnpm install --frozen-lockfile
 
-# Copy server source files and shared types
-COPY server/src ./src
-COPY server/tsconfig.json ./
-COPY shared ../shared
+# Copy shared types to /app/shared
+WORKDIR /app
+COPY shared ./shared
+
+# Copy server source files
+COPY server/src ./server/src
+COPY server/tsconfig.json ./server/
 
 # Build server TypeScript
+WORKDIR /app/server
 RUN pnpm build
 
 # Stage 3: Production runtime
