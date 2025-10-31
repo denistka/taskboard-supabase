@@ -29,6 +29,8 @@ SERVER_SCRIPT=""
 
 if [ -f "dist/src/index.js" ]; then
     SERVER_SCRIPT="dist/src/index.js"
+elif [ -f "dist/server/src/index.js" ]; then
+    SERVER_SCRIPT="dist/server/src/index.js"
 elif [ -f "dist/index.js" ]; then
     SERVER_SCRIPT="dist/index.js"
 else
