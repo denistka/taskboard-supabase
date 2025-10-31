@@ -5,6 +5,8 @@ A modern, real-time collaborative task board application built with Vue 3, TypeS
 ![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/new)
+
 ## 📋 Overview
 
 Taskboard Supabase is a full-featured project management application that enables teams to collaborate in real-time. It provides a Kanban-style board interface with drag-and-drop task management, live user presence indicators, and instant synchronization across all connected clients.
@@ -204,14 +206,92 @@ The project structure supports testing with:
 
 ## 📦 Deployment
 
-### Client Deployment
+Deploy your Taskboard in minutes! Choose from cloud platforms or self-host.
+
+### ☁️ Cloud Deployment (Easiest)
+
+**Option 1: Railway** - Click the deploy button above  
+**Option 2: Render** - Auto-deploy from GitHub  
+**Option 3: Fly.io** - Global edge deployment
+
+See the [complete deployment guide](./DEPLOYMENT.md) for detailed instructions.
+
+### 🐳 Self-Hosted Deployment
+
+The easiest way to deploy the entire application is using Docker. This includes both the client (served via nginx) and WebSocket server in a single container.
+
+#### Prerequisites
+- Docker and Docker Compose installed
+- Supabase project with database schema applied
+
+#### Quick Start
+
+1. **Clone the repository**
+```bash
+git clone https://github.com/denistka/taskboard-supabase.git
+cd taskboard-supabase
+```
+
+2. **Configure environment variables**
+```bash
+cp .env.example .env
+# Edit .env with your Supabase credentials
+```
+
+3. **Build and run with Docker Compose**
+```bash
+docker-compose up -d
+```
+
+The application will be available at `http://localhost`
+
+#### Docker Compose Options
+
+```bash
+# Build and start
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop
+docker-compose down
+
+# Rebuild after changes
+docker-compose up -d --build
+```
+
+#### Build and Run with Docker Directly
+
+```bash
+# Build the image
+docker build -t taskboard-app .
+
+# Run the container
+docker run -d -p 80:80 --env-file .env taskboard-app
+```
+
+#### Environment Variables
+
+Required environment variables for production:
+- `DB_URL` - Your Supabase project URL
+- `DB_SERVICE_KEY` - Your Supabase service role key
+- `PORT` - Server port (default: 3001)
+
+### Separate Deployment
+
+You can still deploy the client and server separately:
+
+#### Client Deployment
 The client can be deployed to any static hosting service:
 - Vercel
 - Netlify
 - AWS S3 + CloudFront
 - GitHub Pages
 
-### Server Deployment
+**Note:** When deploying separately, you'll need to set `VITE_WS_URL` to point to your WebSocket server.
+
+#### Server Deployment
 The WebSocket server can be deployed to:
 - Heroku
 - Railway
@@ -219,7 +299,9 @@ The WebSocket server can be deployed to:
 - DigitalOcean
 - Fly.io
 
-See [Deployment Guide](./docs/DEPLOYMENT.md) for detailed instructions.
+For detailed instructions, see:
+- [Unified Deployment Guide](./DEPLOYMENT.md) - Docker deployment
+- [Server Deployment Guide](./server/DEPLOYMENT.md) - Separate server deployment
 
 ## 🤝 Contributing
 

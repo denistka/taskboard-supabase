@@ -1,7 +1,23 @@
 import { ref } from 'vue'
 import { WebSocketClient } from '../utils/websocket'
 
-const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:3001'
+// Use environment variable if set, otherwise fallback to relative URL or localhost for dev
+const getWebSocketUrl = () => {
+  if (import.meta.env.VITE_WS_URL) {
+    return import.meta.env.VITE_WS_URL
+  }
+  
+  // In production, use relative URL that works with nginx proxy
+  if (import.meta.env.MODE === 'production') {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    return `${protocol}//${window.location.host}/ws`
+  }
+  
+  // Development fallback
+  return 'ws://localhost:3001'
+}
+
+const WS_URL = getWebSocketUrl()
 let wsInstance: WebSocketClient | null = null
 
 

@@ -1,17 +1,23 @@
 version: '3.8'
 
 services:
-  server:
+  app:
     build:
       context: .
-      dockerfile: server/Dockerfile
+      dockerfile: ./Dockerfile
     ports:
-      - "3001:3001"
+      - "80:80"
     environment:
-      - PORT=${PORT:-3001}
+      - PORT=3001
       - DB_URL=${DB_URL}
       - DB_SERVICE_KEY=${DB_SERVICE_KEY}
     restart: unless-stopped
     env_file:
-      - server/.env
+      - .env
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 

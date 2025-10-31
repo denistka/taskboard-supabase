@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: taskboard-app
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 3001
+      - key: DB_URL
+        sync: false
+      - key: DB_SERVICE_KEY
+        sync: false
+    domains:
+      - name: ${RENDER_SERVICE_NAME}.onrender.com
+
