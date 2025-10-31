@@ -90,7 +90,7 @@ const toggleTheme = () => {
 </script>
 
 <template>
-  <div class="flex items-center gap-3 justify-between p-2 bg-gradient-to-b from-white/80 via-white/40 to-transparent dark:from-black/80 dark:via-black/40">
+  <div class="flex items-center gap-3 justify-between p-2 px-8 bg-gradient-to-b from-white/80 via-white/40 to-transparent dark:from-black/80 dark:via-black/40">
     
     <!-- Left: Back button and Search -->
     <div class="flex items-center gap-3 flex-1">
