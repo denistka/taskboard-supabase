@@ -43,12 +43,12 @@ RUN pnpm install --frozen-lockfile
 WORKDIR /app
 COPY shared ./shared
 
-# Copy server source files
-COPY server/src ./server/src
-COPY server/tsconfig.json ./server/
+# Copy server source files (same structure as original Dockerfile)
+WORKDIR /app/server
+COPY server/src ./src
+COPY server/tsconfig.json ./
 
 # Build server TypeScript
-WORKDIR /app/server
 RUN pnpm build
 
 # Stage 3: Production runtime
