@@ -1,0 +1,17 @@
+export { default as TaskCard } from './TaskCard.vue'
+export { default as TaskCardHeader } from './TaskCardHeader.vue'
+export { default as TaskCardFooter } from './TaskCardFooter.vue'
+export { default as TaskDeleteConfirmation } from './TaskDeleteConfirmation.vue'
+export { default as TaskDetailsModal } from './TaskDetailsModal.vue'
+export { default as TaskDetailsModalHeader } from './TaskDetailsModalHeader.vue'
+export { default as TaskDetailsModalContent } from './TaskDetailsModalContent.vue'
+export { default as TaskDetailsModalActions } from './TaskDetailsModalActions.vue'
+export { default as TaskDetailsModalMetadata } from './TaskDetailsModalMetadata.vue'
+export { default as TasksColumn } from './TasksColumn.vue'
+export { default as TasksColumns } from './TasksColumns.vue'
+export { default as TaskColumnHeader } from './TaskColumnHeader.vue'
+export { default as TaskCreationForm } from './TaskCreationForm.vue'
+export { default as DropIndicator } from './DropIndicator.vue'
+export { default as EmptyTaskState } from './EmptyTaskState.vue'
+// TaskComments moved to modules/comments/Comments.vue
+

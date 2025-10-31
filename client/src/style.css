@@ -1,0 +1,352 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Global CSS Variables */
+:root {
+  /* Drag and Drop Indicator Colors */
+  --drag-indicator-primary: rgba(99, 101, 241, 0.325);
+  --drag-indicator-secondary: rgba(138, 92, 246, 0.269);
+  --drag-indicator-primary-alpha: rgba(99, 101, 241, 0.327);
+  --drag-indicator-secondary-alpha: rgba(138, 92, 246, 0.117);
+  
+  /* Drop Indicator for Empty Columns */
+  --drop-indicator-bg-start: rgba(99, 101, 241, 0.087);
+  --drop-indicator-bg-end: rgba(138, 92, 246, 0.048);
+  --drop-indicator-border: rgba(99, 101, 241, 0.229);
+  --drop-indicator-border-hover: rgba(138, 92, 246, 0.329);
+  --drop-indicator-shadow: rgba(99, 101, 241, 0.184);
+  
+  /* Drag State Variables */
+  --drag-primary: rgba(99, 101, 241, 0.156);
+  --drag-secondary: rgba(138, 92, 246, 0.251);
+  --drag-shadow-dark: rgba(0, 0, 0, 0.197);
+  --drag-shadow-primary: rgba(99, 101, 241, 0.149);
+  --drag-ghost-bg-start: rgba(99, 101, 241, 0.046);
+  --drag-ghost-bg-end: rgba(138, 92, 246, 0.072);
+  --drag-ghost-border: rgba(99, 101, 241, 0.177);
+  --drag-over-bg: rgba(99, 101, 241, 0.045);
+  
+  /* Drag Opacity Values */
+  --drag-opacity: 0.8;
+  --ghost-opacity-min: 0.3;
+  --ghost-opacity-start: 0.7;
+  --ghost-opacity-end: 1;
+  
+  /* Drag Layout Values */
+  --drag-bounce-distance: -4px;
+  --drag-z-index: 1000;
+  --drag-border-radius: 1rem;
+  --drag-border-width: 2px;
+}
+
+@layer base {
+  * {
+    @apply border-gray-200 dark:border-gray-800;
+  }
+
+  html {
+    @apply scroll-smooth;
+  }
+
+  body {
+    @apply bg-gray-50 text-gray-900 dark:text-gray-100 transition-colors duration-300;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  .dark body {
+    background-color: #050313;
+  }
+
+  #app {
+    @apply min-h-screen;
+  }
+
+  /* Focus visible styles for accessibility */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-primary-500 ring-offset-2 dark:ring-offset-gray-900;
+    transition: box-shadow 0.2s ease;
+  }
+
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    @apply ring-2 ring-primary-500 ring-offset-2 dark:ring-offset-gray-900;
+  }
+
+  /* Screen reader only - for accessibility */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+}
+
+@layer components {
+  /* Button Components */
+  .button-primary-gradient-with-shadow {
+    @apply bg-gradient-to-r from-primary-600 to-accent-600;
+    @apply text-white font-semibold;
+    @apply px-6 py-3 rounded-full;
+    @apply shadow-2xl hover:shadow-primary-500/50;
+    @apply transition-all duration-300;
+    @apply hover:scale-105 transform;
+    @apply inline-flex items-center justify-center;
+  }
+
+  .button-secondary-outline-hover-lift {
+    @apply bg-white dark:bg-gray-800;
+    @apply text-gray-900 dark:text-gray-100;
+    @apply px-6 py-2.5 rounded-lg font-medium;
+    @apply shadow-md hover:shadow-lg;
+    @apply transition-all duration-300;
+    @apply border border-gray-200 dark:border-gray-700;
+    @apply hover:-translate-y-0.5 transform;
+  }
+
+  .button-icon-rounded-glass {
+    @apply p-3 rounded-full;
+    @apply bg-white/10 dark:bg-gray-800/50;
+    @apply backdrop-blur-lg border;
+    @apply hover:scale-110 transition-all duration-300;
+    @apply shadow-lg hover:shadow-xl;
+  }
+
+  /* Card Components */
+  .card-base-themed-bordered {
+    @apply bg-white dark:bg-gray-900;
+    @apply rounded-xl shadow-lg;
+    @apply border border-gray-100 dark:border-gray-800;
+    @apply transition-all duration-300;
+  }
+
+  .card-glass-effect-with-border {
+    @apply bg-white/70 dark:bg-gray-900/70;
+    @apply backdrop-blur-xl;
+    @apply border border-white/20 dark:border-gray-700/30;
+    @apply shadow-xl rounded-xl;
+  }
+
+  .card-glass-strong-rounded-2xl {
+    @apply backdrop-blur-2xl;
+    @apply border border-white/30 dark:border-gray-700/40;
+    @apply shadow-2xl rounded-2xl;
+  }
+
+  .card-glass-subtle-rounded {
+    @apply bg-white/50 dark:bg-gray-900/50;
+    @apply backdrop-blur-lg;
+    @apply border border-white/10 dark:border-gray-700/20;
+    @apply rounded-lg;
+  }
+
+  /* Input Components */
+  .input-bordered-focus-ring-primary {
+    @apply w-full px-4 py-2.5 rounded-lg;
+    @apply border border-white/20 dark:border-gray-700/40;
+    @apply bg-white/40 dark:bg-gray-800/40;
+    @apply backdrop-blur-xl;
+    @apply text-gray-900 dark:text-gray-100;
+    @apply placeholder:text-gray-500/70 dark:placeholder:text-gray-400/60;
+    @apply focus:outline-none focus:ring-2 focus:ring-primary-500/50;
+    @apply focus:border-primary-500/50;
+    @apply focus:bg-white/60 dark:focus:bg-gray-800/60;
+    @apply transition-all duration-200;
+    @apply shadow-sm hover:shadow-md;
+  }
+
+  .textarea-bordered-focus-ring {
+    @apply input-bordered-focus-ring-primary;
+    @apply resize-none;
+  }
+
+  /* Label Component */
+  .label-text-themed-semibold {
+    @apply block text-sm font-medium;
+    @apply text-gray-700 dark:text-gray-300;
+    @apply mb-2;
+  }
+
+  /* Loading Components */
+  .loading-spinner-primary {
+    @apply w-12 h-12;
+    @apply border-4 border-gray-200 dark:border-gray-800;
+    @apply border-t-primary-500;
+    @apply rounded-full;
+    @apply animate-spin;
+  }
+
+  .loading-screen-centered-column {
+    @apply flex flex-col items-center justify-center;
+    @apply min-h-screen;
+    @apply bg-gray-50;
+  }
+  
+  .dark .loading-screen-centered-column {
+    background-color: #050313;
+  }
+}
+
+@layer utilities {
+  /* Glass Effects */
+  .glass-effect {
+    @apply bg-white/70 dark:bg-gray-900/70;
+    @apply backdrop-blur-xl;
+    @apply border border-white/20 dark:border-gray-700/30;
+    @apply shadow-xl rounded-xl;
+  }
+
+  .glass-card {
+    @apply bg-white/60 dark:bg-gray-900/60;
+    @apply backdrop-blur-2xl;
+    @apply border border-white/30 dark:border-gray-700/40;
+    @apply shadow-2xl rounded-2xl;
+  }
+
+  .glass-subtle {
+    @apply bg-white/50 dark:bg-gray-900/50;
+    @apply backdrop-blur-lg;
+    @apply border border-white/10 dark:border-gray-700/20;
+    @apply rounded-lg;
+  }
+
+  .glass-navbar-fixed {
+    @apply glass-effect;
+    @apply fixed top-0 left-0 right-0 z-50;
+  }
+
+  /* Text Gradient */
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-primary;
+  }
+
+  .text-gradient-primary-accent {
+    @apply bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-primary-400 to-accent-400;
+  }
+
+  /* Background Gradients */
+  .bg-gradient-home-page-light-dark {
+    @apply bg-gradient-to-br;
+    @apply from-primary-50 via-accent-50 to-primary-100;
+  }
+  
+  .dark .bg-gradient-home-page-light-dark {
+    background: linear-gradient(to bottom right, rgb(9 23 52), #050313 var(--tw-gradient-via-position), rgb(10 15 30));
+    --tw-gradient-via-position: 50%;
+  }
+
+  .bg-gradient-auth-page-light-dark {
+    @apply bg-gradient-to-br;
+    @apply from-slate-50 via-gray-50 to-zinc-100;
+  }
+  
+  .dark .bg-gradient-auth-page-light-dark {
+    background: linear-gradient(to bottom right, rgb(9 23 52), #050313 var(--tw-gradient-via-position), rgb(10 15 30));
+    --tw-gradient-via-position: 50%;
+  }
+
+  .bg-gradient-board-page-light-dark {
+    @apply bg-gradient-to-br;
+    @apply from-primary-75 via-accent-75 to-primary-125;
+  }
+  
+  .dark .bg-gradient-board-page-light-dark {
+    background: linear-gradient(to bottom right, rgb(9 23 52), #050313 var(--tw-gradient-via-position), rgb(10 15 30));
+    --tw-gradient-via-position: 50%;
+  }
+}
+
+/* Scrollbar Styles - Тонкий красивый скроллбар */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.5);
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(156, 163, 175, 0.7);
+}
+
+/* Для Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+}
+
+/* Dark mode */
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(75, 85, 99, 0.5);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(75, 85, 99, 0.7);
+}
+
+.dark * {
+  scrollbar-color: rgba(75, 85, 99, 0.5) transparent;
+}
+
+/* Hide Scrollbars */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Drag and Drop Styles */
+.dragging {
+  @apply opacity-50 cursor-grabbing relative;
+  transform: rotate(2deg);
+}
+
+.drag-over {
+  @apply ring-2 ring-primary-500 ring-opacity-50;
+}
+
+/* Animations */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Hover Effects */
+.hover-lift-scale {
+  @apply transition-transform duration-300;
+  @apply hover:scale-105 hover:-translate-y-1;
+}
+
+.hover-glow-primary {
+  @apply transition-shadow duration-300;
+  @apply hover:shadow-lg hover:shadow-primary-500/50;
+}
+
+.hover-glow-accent {
+  @apply transition-shadow duration-300;
+  @apply hover:shadow-lg hover:shadow-accent-500/50;
+}

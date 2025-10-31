@@ -12,7 +12,7 @@ node_modules
 
 # Build output
 dist
-build
+dist-ssr
 *.local
 
 # Editor directories and files
@@ -43,10 +43,4 @@ build
 # Temporary files
 *.tmp
 *.temp
-
-# Runtime data
-pids
-*.pid
-*.seed
-*.pid.lock
 
