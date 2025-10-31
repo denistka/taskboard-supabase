@@ -46,7 +46,27 @@ COPY shared ./shared
 # Copy server source files (same structure as original Dockerfile)
 WORKDIR /app/server
 COPY server/src ./src
-COPY server/tsconfig.json ./
+
+# Create a Docker-specific tsconfig that sets rootDir to avoid nested output
+RUN echo '{ \
+  "compilerOptions": { \
+    "target": "ES2020", \
+    "module": "ESNext", \
+    "lib": ["ES2020"], \
+    "types": ["node"], \
+    "moduleResolution": "node", \
+    "rootDir": ".", \
+    "outDir": "./dist", \
+    "strict": true, \
+    "esModuleInterop": true, \
+    "skipLibCheck": true, \
+    "forceConsistentCasingInFileNames": true, \
+    "resolveJsonModule": true, \
+    "allowSyntheticDefaultImports": true \
+  }, \
+  "include": ["src/**/*", "../shared/**/*"], \
+  "exclude": ["node_modules"] \
+}' > tsconfig.json
 
 # Build server TypeScript
 RUN pnpm build
