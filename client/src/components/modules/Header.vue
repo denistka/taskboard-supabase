@@ -4,7 +4,6 @@ import { onMounted, onUnmounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuth } from '../../composables/useAuth'
 import { usePresence } from '../../composables/presence/usePresence'
-import { useBoard } from '../../composables/useBoard'
 import { useBoards } from '../../composables/useBoards'
 import UserAppPresence from '../common/presence/UserAppPresence.vue'
 import { uiButton, uiThemeSwitcher } from '../common/ui'
@@ -16,7 +15,6 @@ const router = useRouter()
 const route = useRoute()
 const { signOut, isAuthenticated } = useAuth()
 const presence = usePresence()
-const { currentBoard } = useBoard()
 const { isBoardCreating } = useBoards()
 
 const { isDark, toggle } = useTheme()
@@ -26,23 +24,24 @@ const showBackButton = computed(() => {
   return path.startsWith('/board/') || path === '/profile'
 })
 
-const pageTitle = computed(() => {
-  const path = route.path
-  
-  if (path.startsWith('/board/')) {
-    return currentBoard.value?.name || 'Task Board'
-  }
-  
-  if (path === '/profile') {
-    return 'Profile'
-  }
-  
-  if (path === '/boards') {
-    return 'My Boards'
-  }
-  
-  return ''
-})
+// Unused but kept for potential future use
+// const pageTitle = computed(() => {
+//   const path = route.path
+//   
+//   if (path.startsWith('/board/')) {
+//     return currentBoard.value?.name || 'Task Board'
+//   }
+//   
+//   if (path === '/profile') {
+//     return 'Profile'
+//   }
+//   
+//   if (path === '/boards') {
+//     return 'My Boards'
+//   }
+//   
+//   return ''
+// })
 
 const showCreateButton = computed(() => {
   return route.path === '/boards'

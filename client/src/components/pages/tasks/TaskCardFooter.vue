@@ -15,7 +15,7 @@ interface Emits {
   (e: 'cancelDelete', event: Event): void
 }
 
-const props = defineProps<Props>()
+defineProps<Props>()
 const emit = defineEmits<Emits>()
 
 const formatDate = (date: string) => {

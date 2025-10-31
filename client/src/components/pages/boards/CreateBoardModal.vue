@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { uiButton, uiInput } from '../../common/ui'
-import { IconClose, IconPlus } from '../../common/icons'
+import { IconPlus } from '../../common/icons'
 
 interface Props {
   modelValue: boolean

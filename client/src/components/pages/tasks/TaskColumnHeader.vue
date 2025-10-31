@@ -8,7 +8,7 @@ defineProps<{
   isCreating: boolean
 }>()
 
-const emit = defineEmits<{
+defineEmits<{
   toggleCreate: []
 }>()
 </script>
