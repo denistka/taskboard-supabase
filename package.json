@@ -2,7 +2,7 @@
   "name": "taskboard-supabase-root",
   "version": "1.0.0",
   "private": true,
-  "packageManager": "pnpm@9.12.2",
+  "packageManager": "pnpm@10.0.0",
   "description": "Taskboard Supabase monorepo root"
 }
 
