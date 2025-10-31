@@ -1,7 +1,7 @@
 {
-  "buildCommand": "cd client && corepack enable && pnpm build",
+  "buildCommand": "cd client && pnpm build",
   "outputDirectory": "client/dist",
-  "installCommand": "cd client && corepack enable && pnpm install --frozen-lockfile",
+  "installCommand": "cd client && pnpm install",
   "framework": "vite"
 }
 
