@@ -17,7 +17,7 @@ export class CommentManager extends BaseManager {
       .select('id, email, full_name, avatar_url')
       .in('id', userIds)
 
-    const profileMap = new Map((profiles || []).map(p => [p.id, p]))
+    const profileMap = new Map((profiles || []).map((p: any) => [p.id, p]))
 
     // Merge profiles into comments
     return comments.map(comment => ({

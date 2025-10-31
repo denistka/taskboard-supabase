@@ -41,9 +41,9 @@ export class BoardManager extends BaseManager {
     if (membershipsError) throw membershipsError
 
     // Merge boards with roles
-    const membershipMap = new Map(memberships?.map(m => [m.board_id, m.role]) || [])
+    const membershipMap = new Map(memberships?.map((m: any) => [m.board_id, m.role]) || [])
     
-    const boards: BoardWithRole[] = allBoards.map(board => ({
+    const boards: BoardWithRole[] = allBoards.map((board: any) => ({
       ...board,
       role: membershipMap.get(board.id) || null
     }))
@@ -55,7 +55,7 @@ export class BoardManager extends BaseManager {
       .eq('user_id', userId)
       .eq('status', 'pending')
     
-    const userRequestsMap = new Set(userRequests?.map(r => r.board_id) || [])
+    const userRequestsMap = new Set(userRequests?.map((r: any) => r.board_id) || [])
 
     // Batch query: Get pending request counts for all owned boards
     const ownedBoards = boards.filter(b => b.role === 'owner')
@@ -70,7 +70,7 @@ export class BoardManager extends BaseManager {
         .eq('status', 'pending')
       
       // Build count map
-      requests?.forEach(req => {
+      requests?.forEach((req: any) => {
         const current = countsMap.get(req.board_id) || 0
         countsMap.set(req.board_id, current + 1)
       })
@@ -220,7 +220,7 @@ export class BoardManager extends BaseManager {
     if (!requests || requests.length === 0) return []
 
     // Get user profiles for all requests
-    const userIds = requests.map(r => r.user_id)
+    const userIds = requests.map((r: any) => r.user_id)
     const { data: profiles, error: profilesError } = await this.supabase
       .from('profiles')
       .select('id, email, full_name, avatar_url')
@@ -229,8 +229,8 @@ export class BoardManager extends BaseManager {
     if (profilesError) throw profilesError
 
     // Merge profiles into requests
-    const profileMap = new Map(profiles?.map(p => [p.id, p]) || [])
-    return requests.map(request => ({
+    const profileMap = new Map(profiles?.map((p: any) => [p.id, p]) || [])
+    return requests.map((request: any) => ({
       ...request,
       profiles: profileMap.get(request.user_id)
     }))

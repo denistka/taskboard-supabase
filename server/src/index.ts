@@ -1,4 +1,4 @@
-import { WebSocketServer } from 'ws'
+import { WebSocketServer, WebSocket } from 'ws'
 import { config } from './config.js'
 import { ConnectionManager } from './managers/ConnectionManager.js'
 import { PresenceManager } from './managers/PresenceManager.js'
@@ -22,7 +22,7 @@ const handler = new MessageHandler(conn, presence, board, task, auth, profile, c
 
 let connectionIdCounter = 0
 
-wss.on('connection', (ws) => {
+wss.on('connection', (ws: WebSocket) => {
   // Assign unique ID to each connection
   const wsId = `ws_${++connectionIdCounter}`
   ;(ws as any)._id = wsId
@@ -30,7 +30,7 @@ wss.on('connection', (ws) => {
   console.log(`[WS] New connection: ${wsId}`)
   conn.add(ws)
 
-  ws.on('message', async (data) => {
+  ws.on('message', async (data: Buffer) => {
     try {
       const message = JSON.parse(data.toString())
       await handler.handle(ws, message)

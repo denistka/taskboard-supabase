@@ -97,11 +97,11 @@ export class TaskManager extends BaseManager {
     if (fetchError) throw fetchError
 
     // Create a map of existing tasks for quick lookup
-    const existingMap = new Map(existingTasks?.map(t => [t.id, t]) || [])
+    const existingMap = new Map(existingTasks?.map((t: any) => [t.id, t]) || [])
 
     // Merge updates with existing task data
-    const updates = tasks.map(t => {
-      const existing = existingMap.get(t.id)
+    const updates = tasks.map((t: { id: string; board_id: string; status: TaskStatus; position: number; version: number }) => {
+      const existing: any = existingMap.get(t.id)
       if (!existing) {
         throw new Error(`Task ${t.id} not found`)
       }
