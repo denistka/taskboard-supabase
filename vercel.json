@@ -1,7 +1,7 @@
 {
   "buildCommand": "cd client && pnpm build",
   "outputDirectory": "client/dist",
-  "installCommand": "cd client && corepack enable && pnpm install",
+  "installCommand": "cd client && corepack enable && corepack prepare pnpm@9.12.2 --activate && pnpm install --no-frozen-lockfile",
   "devCommand": "cd client && pnpm dev",
   "framework": "vite"
 }
