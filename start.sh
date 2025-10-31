@@ -44,8 +44,17 @@ fi
 
 if [ -n "$SERVER_SCRIPT" ]; then
     echo "Found server file at $SERVER_SCRIPT, starting..."
+    
+    # Check for required environment variables
+    if [ -z "$DB_URL" ] || [ -z "$DB_SERVICE_KEY" ]; then
+        echo "WARNING: Missing required environment variables!"
+        [ -z "$DB_URL" ] && echo "  - DB_URL is not set"
+        [ -z "$DB_SERVICE_KEY" ] && echo "  - DB_SERVICE_KEY is not set"
+        echo "Please set these in Railway project variables. Continuing anyway..."
+    fi
+    
     # Server should always listen on port 3001 internally (nginx listens on Railway's PORT)
-    # Set WEBSOCKET_PORT for the server, or explicitly set PORT=3001 for this process only
+    # Set PORT=3001 for this process only - other env vars will be inherited
     PORT=3001 node "$SERVER_SCRIPT" &
     SERVER_PID=$!
 fi
