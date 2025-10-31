@@ -2,7 +2,7 @@
 
 # Start the WebSocket server in the background
 cd /app/server
-node dist/index.js &
+node dist/server/src/index.js &
 SERVER_PID=$!
 
 # Give the server a moment to start
