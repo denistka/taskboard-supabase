@@ -1,8 +1,0 @@
-{
-  "buildCommand": "cd client && pnpm build",
-  "outputDirectory": "client/dist",
-  "installCommand": "npm install -g pnpm@latest && cd client && pnpm install --no-frozen-lockfile",
-  "devCommand": "cd client && pnpm dev",
-  "framework": "vite"
-}
-
