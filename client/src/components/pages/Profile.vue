@@ -55,7 +55,7 @@ const handleFileUpload = (event: Event) => {
   
   const reader = new FileReader()
   reader.onload = (e) => {
-    avatarUrl.value = e.target?.result as string
+    profile.value!.avatar_url = e.target?.result as string
     imageError.value = false
   }
   reader.onerror = () => {
@@ -69,7 +69,7 @@ const handleSaveProfile = async () => {
     imageError.value = false
     await updateProfile({ 
       full_name: fullName.value.trim(),
-      avatar_url: avatarUrl.value || undefined
+      avatar_url: avatarUrl.value || ''
     })
     toast.success('Profile updated successfully')
   } catch (err: any) {
