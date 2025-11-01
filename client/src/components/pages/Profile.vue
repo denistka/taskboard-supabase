@@ -1,15 +1,22 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useProfile } from '../../composables/useProfile'
 import { useToast } from '../../composables/useNotification'
 import PageLayout from '../wrappers/PageLayout.vue'
-import { uiButton, uiCard, uiInput, uiAvatar } from '../common/ui'
+import { uiButton, uiCard, uiInput, uiAvatar, uiLoadingOverlay } from '../common/ui'
 
-const { profile, stats, loading, error, fetchProfile, updateProfile, fetchStats } = useProfile()
+const { profile, stats, loading, saving, fetchingStats, error, fetchProfile, updateProfile, fetchStats } = useProfile()
 const toast = useToast()
 
-const firstName = ref('')
-const lastName = ref('')
+const isLoading = computed(() => loading.value || saving.value || fetchingStats.value)
+const loadingMessage = computed(() => {
+  if (saving.value) return 'Saving changes...'
+  if (loading.value) return 'Loading profile...'
+  if (fetchingStats.value) return ' Fetching statistics...'
+  return ''
+})
+
+const fullName = ref('')
 const avatarUrl = ref('')
 const imageError = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
@@ -21,9 +28,7 @@ onMounted(async () => {
     await fetchStats()
     
     if (profile.value) {
-      const nameParts = (profile.value.full_name || '').split(' ')
-      firstName.value = nameParts[0] || ''
-      lastName.value = nameParts.slice(1).join(' ') || ''
+      fullName.value = profile.value.full_name || ''
       avatarUrl.value = profile.value.avatar_url || ''
     }
   } catch (err) {
@@ -32,9 +37,7 @@ onMounted(async () => {
 })
 
 const getInitials = () => {
-  const first = firstName.value.charAt(0).toUpperCase()
-  const last = lastName.value.charAt(0).toUpperCase()
-  return first + last || '?'
+  return fullName.value || ''
 }
 
 const triggerFileUpload = () => {
@@ -73,12 +76,10 @@ const handleFileUpload = (event: Event) => {
 const handleSaveProfile = async () => {
   try {
     imageError.value = false
-    const fullName = `${firstName.value} ${lastName.value}`.trim()
     await updateProfile({ 
-      full_name: fullName,
+      full_name: fullName.value.trim(),
       avatar_url: avatarUrl.value || undefined
     })
-    await fetchStats() // Refresh stats after update
     toast.success('Profile updated successfully')
   } catch (err: any) {
     console.error('Failed to update profile:', err)
@@ -90,7 +91,9 @@ const handleSaveProfile = async () => {
 <template>
   <page-layout>
     <template #content>
-      <div v-if="!loading" class="w-full p-6">
+      <ui-loading-overlay :visible="isLoading" :message="loadingMessage" />
+      
+      <div class="w-full p-6">
           <ui-card variant="strong" padding="lg" class="shadow-lg w-full max-w-2xl mx-auto">
             <h2 class="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">Edit Profile</h2>
             
@@ -123,15 +126,9 @@ const handleSaveProfile = async () => {
                 </div>
               </div>
 
-              <div class="grid grid-cols-2 gap-4 mb-5">
-                <div>
-                  <label class="label-text-themed-semibold">First Name</label>
-                  <ui-input v-model="firstName" type="text" :required="true" />
-                </div>
-                <div>
-                  <label class="label-text-themed-semibold">Last Name</label>
-                  <ui-input v-model="lastName" type="text" :required="true" />
-                </div>
+              <div class="mb-5">
+                <label class="label-text-themed-semibold">Full Name</label>
+                <ui-input v-model="fullName" type="text" :required="true" />
               </div>
 
               <div class="mb-6">
@@ -139,7 +136,7 @@ const handleSaveProfile = async () => {
                 <ui-input :model-value="profile?.email" type="email" :disabled="true" class="opacity-60 cursor-not-allowed" />
               </div>
 
-              <ui-button type="submit" color="blue" size="md" variant="neon" :disabled="loading" :loading="loading">
+              <ui-button type="submit" color="blue" size="md" variant="neon" :disabled="saving" :loading="saving">
                 Save Changes
               </ui-button>
             </form>
