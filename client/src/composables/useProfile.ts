@@ -10,6 +10,8 @@ export function useProfile() {
   const profile = ref<Profile | null>(null)
   const stats = ref<ProfileStats | null>(null)
   const loading = ref(false)
+  const saving = ref(false)
+  const fetchingStats = ref(false)
   const error = ref<string | null>(null)
 
   const fetchProfile = async () => {
@@ -28,7 +30,7 @@ export function useProfile() {
   }
 
   const updateProfile = async (updates: { full_name?: string; avatar_url?: string }) => {
-    loading.value = true
+    saving.value = true
     error.value = null
     try {
       const result = await send<{ profile: Profile }>('profile:update', { updates }, getToken()!)
@@ -38,12 +40,12 @@ export function useProfile() {
       error.value = err.message
       throw err
     } finally {
-      loading.value = false
+      saving.value = false
     }
   }
 
   const fetchStats = async () => {
-    loading.value = true
+    fetchingStats.value = true
     error.value = null
     try {
       const result = await send<{ stats: ProfileStats }>('profile:stats', {}, getToken()!)
@@ -53,7 +55,7 @@ export function useProfile() {
       error.value = err.message
       throw err
     } finally {
-      loading.value = false
+      fetchingStats.value = false
     }
   }
 
@@ -61,6 +63,8 @@ export function useProfile() {
     profile,
     stats,
     loading,
+    saving,
+    fetchingStats,
     error,
     fetchProfile,
     updateProfile,
