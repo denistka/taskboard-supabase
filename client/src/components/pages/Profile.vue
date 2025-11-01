@@ -16,8 +16,8 @@ const loadingMessage = computed(() => {
   return ''
 })
 
-const fullName = ref('')
-const avatarUrl = ref('')
+const fullName = computed(() => profile.value?.full_name || '')
+const avatarUrl = computed(() => profile.value?.avatar_url || '')
 const imageError = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
 const uploadedFileName = ref('')
@@ -26,19 +26,10 @@ onMounted(async () => {
   try {
     await fetchProfile()
     await fetchStats()
-    
-    if (profile.value) {
-      fullName.value = profile.value.full_name || ''
-      avatarUrl.value = profile.value.avatar_url || ''
-    }
   } catch (err) {
     console.error('Failed to load profile:', err)
   }
 })
-
-const getInitials = () => {
-  return fullName.value || ''
-}
 
 const triggerFileUpload = () => {
   fileInput.value?.click()
@@ -102,8 +93,8 @@ const handleSaveProfile = async () => {
             <form @submit.prevent="handleSaveProfile">
               <div class="flex gap-6 mb-6">
                 <ui-avatar
-                  :src="avatarUrl && !imageError ? avatarUrl : ''"
-                  :initials="getInitials()"
+                  :src="avatarUrl"
+                  :initials="fullName"
                   size="xl"
                   color="bg-primary-500"
                   alt="Avatar"
