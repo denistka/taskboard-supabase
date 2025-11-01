@@ -1,4 +1,4 @@
-import type { User, Profile, Presence } from '../../../shared/types.js'
+import type { User, Profile, Presence, AuthUser } from '../../../shared/types.js'
 import { BaseManager } from './BaseManager.js'
 
 interface PresenceData {
@@ -282,7 +282,14 @@ export class PresenceManager extends BaseManager {
         .single()
       
       if (error) {
-        console.error(`[PresenceManager] Profile fetch error for ${userId}:`, error)
+        // If profile doesn't exist, try to create it from auth.users
+        if (error.code === 'PGRST116') {
+          console.log(`[PresenceManager] Profile missing for ${userId}, attempting to create...`)
+          await this.createMissingProfile(userId)
+        } else {
+          console.error(`[PresenceManager] Profile fetch error for ${userId}:`, error)
+        }
+        return
       }
       
       if (data) {
@@ -290,6 +297,42 @@ export class PresenceManager extends BaseManager {
       }
     } catch (err) {
       console.error(`[PresenceManager] Profile fetch exception for ${userId}:`, err)
+    }
+  }
+
+  protected async createMissingProfile(userId: string): Promise<void> {
+    try {
+      // Use the get_auth_user RPC function to safely query auth.users
+      const { data: authUserData, error: authError } = await this.supabase
+        .rpc('get_auth_user', { user_id: userId })
+        .single()
+      
+      if (authError || !authUserData) {
+        console.error(`[PresenceManager] Could not find auth user for ${userId}:`, authError)
+        return
+      }
+
+      const authUser = authUserData as AuthUser
+
+      // Create profile from auth user data
+      const { data: profile, error } = await this.supabase
+        .from('profiles')
+        .insert({
+          id: userId,
+          email: authUser.email,
+          full_name: authUser.full_name
+        })
+        .select('id, email, full_name, avatar_url')
+        .single()
+
+      if (error) {
+        console.error(`[PresenceManager] Failed to create profile for ${userId}:`, error)
+      } else if (profile) {
+        console.log(`[PresenceManager] Successfully created missing profile for ${userId}`)
+        this.profiles.set(userId, profile)
+      }
+    } catch (err) {
+      console.error(`[PresenceManager] Exception creating profile for ${userId}:`, err)
     }
   }
 
